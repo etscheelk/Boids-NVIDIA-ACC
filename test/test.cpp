@@ -4,6 +4,11 @@
 #include <tsgl.h>
 #include "myVector.cpp"
 
+#include <array>
+#include <vector>
+#include <memory>
+
+#define DEBUG
 
 using namespace tsgl;
 
@@ -18,9 +23,15 @@ int numThreads = 8;
         
         boids new velocity x
         boids new velocity y
-
-        
 */
+
+float *bx;
+float *by;
+float *vx;  
+float *vy;
+float *nvx; 
+float *nvy;
+
 
 class boid {
 private:
@@ -28,8 +39,18 @@ private:
     Canvas& can;
 public:
     Vector2 pos, vel, acc;
-    boid(float x, float y, Canvas& can) : can(can) {
+    int index;
+    /**
+     * @brief Construct a new boid object, which is only ever stored on the CPU.
+     * We use pointer arrays so we don't have to send my boid objects to the GPU.
+     * 
+     * @param x 
+     * @param y 
+     * @param can 
+     */
+    boid(float x, float y, int index, Canvas& can) : can(can) {
         pos = Vector2(x, y);
+        this->index = index;
         arrow = new Arrow(
             x, y, 0, 
             20, 12, 
@@ -39,17 +60,41 @@ public:
         can.add(arrow);
     }
 
+    /**
+     * @brief Destroy the boid object
+     * 
+     */
     ~boid() {
         can.remove(arrow);
         delete arrow;
     }
 };
 
+void initiateBoids(int WW, int WH, Array<boid*>& boids, Canvas& canvas) {
+    for (int i = 0; i < boids.capacity(); ++i) {
+        int x = rand() % WW - WW / 2;
+        int y = rand() % WH - WH / 2;
+        boids[i] = new boid(x, y, i, canvas);
+
+        printf("index %d: %d -- %d\n", i, x, y);
+    }
+
+    #ifdef DEBUG
+    fprintf(stderr, "Initiate boids complete!\n");
+    #endif
+}
+
 void testScreen(Canvas& canvas) {
     const int WW = canvas.getWindowWidth(),
               WH = canvas.getWindowHeight();
 
-    boid* b = new boid(0, 0, canvas);
+
+    // Array<boid*> arr(50);
+    std::vector<std::unique_ptr<boid>> arr;
+    // initiateBoids(WW, WH, arr, canvas);
+    
+
+    boid* b = new boid(0, 0, 0, canvas);
 
     Background* back = canvas.getBackground();
     back->drawSquare(0, 0, 0, 50, 0, 0, 0, WHITE, true);
@@ -123,9 +168,15 @@ int vec(int a) {
 }
 
 int main (int argc, char* argv[]) {
-    
-
     std::cout << "Hello world!" <<  std::endl;
+    
+    size_t numBoids = 25;
+    bx  = (float*) malloc(numBoids * sizeof(float));
+    by  = (float*) malloc(numBoids * sizeof(float));
+    vx  = (float*) malloc(numBoids * sizeof(float));
+    vy  = (float*) malloc(numBoids * sizeof(float));
+    nvx = (float*) malloc(numBoids * sizeof(float));
+    nvy = (float*) malloc(numBoids * sizeof(float));
 
     numThreads = atoi(argv[1]);
     printf("NumThreads: %d\n", numThreads);
@@ -139,6 +190,10 @@ int main (int argc, char* argv[]) {
     can.run(testScreen);
 
     
+    // Array<Vector2> arr(1000);
+    // #pragma acc parallel loop independent
+    
+
 
     #ifdef GPU
     #pragma acc kernels
@@ -150,6 +205,13 @@ int main (int argc, char* argv[]) {
         // printf("Hello! Thread %d on %d\n", omp_get_thread_num(), i);
         // printf("Hello there! I'm hopefully threaded lol %d\n", i);
     }
+
+    free(bx);
+    free(by);
+    free(vx);
+    free(vy);
+    free(nvx);
+    free(nvy);
 
     return 0;
 }

@@ -6,7 +6,7 @@ Written for OpenACC with the intent to test multicore CPU as well as GPU threadi
 
 ## Boids
 
-Boids are a form of simulated bird, coined by Craig Reynolds in 1986. [Click for Craig's paper.](http://www.cs.toronto.edu/~dt/siggraph97-course/cwr87/) [Click for the Boids wikipedia article.](https://en.wikipedia.org/wiki/Boids)
+Boids are a form of simulated bird, coined by Craig Reynolds in 1986. [Click for Craig's paper.](http://www.cs.toronto.edu/~dt/siggraph97-course/cwr87/) [Click for the Boids wikipedia article.](https://en.wikipedia.org/wiki/Boids). [Helpful pseudocode.](https://vergenet.net/~conrad/boids/pseudocode.html)
 
 ## Dev Environment
 
