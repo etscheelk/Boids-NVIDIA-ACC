@@ -67,7 +67,6 @@ public:
             CYAN
         );
         can->add(arrow);
-        printf("%d\n", sizeof(can));
     }
 
     /**
@@ -176,23 +175,30 @@ void testScreen(Canvas& canvas, unsigned numBoids) {
     printf("Duration: %lf\n", omp_get_wtime() - startT);
     #endif
 
-
+    canvas.setShowFPS(true);
     while (canvas.isOpen()) {
-        canvas.sleep(); // This slows it down
+        // canvas.sleep(); // This slows it dowsn
+        // printf("fps: %f\n", canvas.getFPS());
 
         // #pragma acc parallel loop independent num_gangs(numThreads)
         
+        #ifdef GPU
         #pragma acc kernels
         #pragma acc data copyin(bx[:numBoids], by[:numBoids]) copy(vx[:numBoids], vy[:numBoids])
         #pragma acc loop independent
+        #else
+        #pragma acc parallel loop independent num_gangs(numThreads) collapse(1)
+        #endif
         for (int i = 0; i < numBoids; ++i) {
-            printf("Inside fork\n");
+            boids[i]->setColor(ColorFloat(omp_get_thread_num() / 8. + 0.1));
+            // printf("thread: %d\n", omp_get_thread_num());
+            // printf("Inside fork\n");
             // printf("%d\n", omp_get_thread_num());
             Vector2 r1 = Rule1GroupUp(i);
 
-            if (i == 0) {
-                printf("r1 = (%f, %f)\n", r1.x, r1.y);
-            }
+            // if (i == 0) {
+            //     printf("r1 = (%f, %f)\n", r1.x, r1.y);
+            // }
 
 
             Vector2 r2 = Rule2Avoid(i);
@@ -205,12 +211,12 @@ void testScreen(Canvas& canvas, unsigned numBoids) {
             vy[i] += r1.y + r2.y + r3.y;
         }
 
-        printf("Speed of index 0: (%f, %f)\n", vx[0], vy[0]);
+        // printf("Speed of index 0: (%f, %f)\n", vx[0], vy[0]);
 
 
         float a = omp_get_wtime();
 
-        // #pragma acc parallel loop independent num_gangs(numThreads)
+        #pragma acc parallel loop independent num_gangs(numThreads)
         for (int i = 0; i < boids.size(); ++i) {
             bx[i] += 0.005 * vx[i];
             by[i] += 0.005 * vy[i];
@@ -218,15 +224,15 @@ void testScreen(Canvas& canvas, unsigned numBoids) {
 
         float b = omp_get_wtime();
 
-        // #pragma acc parallel loop independent num_gangs(numThreads)
+        #pragma acc parallel loop independent num_gangs(numThreads)
         for (int i = 0; i < boids.size(); ++i) {
             boids[i]->updatePosition(bx[i], by[i]);
             boids[i]->updateDirection(vx[i], vy[i]);
         }
 
-        float c = omp_get_wtime();
+        // float c = omp_get_wtime();
 
-        printf("Time to update positions: %f\nTime to update boid objects: %f\nTotal time elapsed: %f\n\n", b - a, c - b, c - a);
+        // printf("Time to update positions: %f\nTime to update boid objects: %f\nTotal time elapsed: %f\n\n", b - a, c - b, c - a);
 
         // for (int iter = 0; iter < 1000; ++iter) {
             /*
@@ -249,7 +255,7 @@ void testScreen(Canvas& canvas, unsigned numBoids) {
     
 } 
 
-Vector2 Rule1GroupUp(int boidIndex) {
+inline Vector2 Rule1GroupUp(int boidIndex) {
     Vector2 p(0., 0.);
     
     for (int i = 0; i < numBoids; ++i) {
@@ -259,16 +265,12 @@ Vector2 Rule1GroupUp(int boidIndex) {
         p.y += by[boidIndex];
     }
 
-    p *= 1. / (numBoids - 1); 
-
-    if (boidIndex == 0) {
-        printf("(%f, %f)\n", p.x, p.y);
-    }
+    p *= 1. / (numBoids - 1);
 
     return Vector2(p.x - bx[boidIndex], p.y - by[boidIndex]) * 0.01;
 }
 
-Vector2 Rule2Avoid(int boidIndex) {
+inline Vector2 Rule2Avoid(int boidIndex) {
     Vector2 c(0., 0.);
 
     for (int i = 0; i < numBoids; ++i) {
@@ -282,7 +284,7 @@ Vector2 Rule2Avoid(int boidIndex) {
     return c;
 }
 
-Vector2 Rule3Align(int boidIndex) {
+inline Vector2 Rule3Align(int boidIndex) {
     Vector2 z(0., 0.);
 
     for (int i = 0; i < numBoids; ++i) {
@@ -299,7 +301,7 @@ Vector2 Rule3Align(int boidIndex) {
 int main (int argc, char* argv[]) {
     std::cout << "Hello world!" <<  std::endl;
     
-    numBoids = 1024;
+    numBoids = 500;
     bx  = (float*) malloc(numBoids * sizeof(float));
     by  = (float*) malloc(numBoids * sizeof(float));
     vx  = (float*) malloc(numBoids * sizeof(float));
@@ -336,6 +338,59 @@ int main (int argc, char* argv[]) {
             fprintf(stderr, "Incorrect %d", i);
     }
     #endif
+
+    std::vector<std::unique_ptr<boid>> boids(numBoids);
+    initiateBoids(1600, 900, boids, &can);
+
+    double a = omp_get_wtime();
+    
+
+    for (int it = 0; it < 1000; ++it) {
+        printf("it: %d\n", it);
+        #ifdef GPU
+        #pragma acc kernels
+        #pragma acc data copyin(bx[:numBoids], by[:numBoids]) copy(vx[:numBoids], vy[:numBoids])
+        #pragma acc loop independent
+        #else
+        #pragma acc parallel loop independent num_gangs(numThreads) collapse(1)
+        #endif
+        for (int i = 0; i < numBoids; ++i) {
+            // boids[i]->setColor(ColorFloat(omp_get_thread_num() / 8. + 0.1));
+            // printf("thread: %d\n", omp_get_thread_num());
+            // printf("Inside fork\n");
+            // printf("%d\n", omp_get_thread_num());
+            Vector2 r1 = Rule1GroupUp(i);
+
+            // if (i == 0) {
+            //     printf("r1 = (%f, %f)\n", r1.x, r1.y);
+            // }
+
+
+            Vector2 r2 = Rule2Avoid(i);
+
+
+            // Vector2 r3 = Vector2();
+            Vector2 r3 = Rule3Align(i);
+
+            vx[i] += r1.x + r2.x + r3.x;
+            vy[i] += r1.y + r2.y + r3.y;
+        }
+
+        // printf("Speed of index 0: (%f, %f)\n", vx[0], vy[0]);
+
+
+        // float a = omp_get_wtime();
+
+        // #pragma acc parallel loop independent num_gangs(numThreads)
+        for (int i = 0; i < boids.size(); ++i) {
+            bx[i] += 0.005 * vx[i];
+            by[i] += 0.005 * vy[i];
+        }
+    }
+
+    double b = omp_get_wtime();
+
+    printf("#%d boids, Time taken for 1000 iterations: %lf s\n", numBoids, b - a);
 
     free(bx);
     free(by);
