@@ -105,7 +105,7 @@ public:
  * @param canvasP 
  */
 void initiateBoids(int WW, int WH, std::vector<std::unique_ptr<boid>>& boids, Canvas* canvasP) {
-    #pragma acc parallel loop independent collapse(1) num_gangs(numThreads) 
+    // #pragma acc parallel loop independent collapse(1) num_gangs(numThreads) 
     for (int index = 0; index < boids.size(); ++index) {
         float x = rand() % WW - WW / 2; bx[index] = x;
         float y = rand() % WH - WH / 2; by[index] = y;
@@ -125,7 +125,6 @@ void initiateBoids(int WW, int WH, std::vector<std::unique_ptr<boid>>& boids, Ca
 void testScreen(Canvas& canvas, unsigned numBoids) {
     const int WW = canvas.getWindowWidth(),
               WH = canvas.getWindowHeight();
-
 
     std::vector<std::unique_ptr<boid>> boids(numBoids);
     initiateBoids(WW, WH, boids, &canvas);
@@ -181,8 +180,14 @@ void testScreen(Canvas& canvas, unsigned numBoids) {
     while (canvas.isOpen()) {
         canvas.sleep(); // This slows it down
 
-
+        // #pragma acc parallel loop independent num_gangs(numThreads)
+        
+        #pragma acc kernels
+        #pragma acc data copyin(bx[:numBoids], by[:numBoids]) copy(vx[:numBoids], vy[:numBoids])
+        #pragma acc loop independent
         for (int i = 0; i < numBoids; ++i) {
+            printf("Inside fork\n");
+            // printf("%d\n", omp_get_thread_num());
             Vector2 r1 = Rule1GroupUp(i);
 
             if (i == 0) {
@@ -193,7 +198,8 @@ void testScreen(Canvas& canvas, unsigned numBoids) {
             Vector2 r2 = Rule2Avoid(i);
 
 
-            Vector2 r3 = Rule3Align(i);
+            Vector2 r3 = Vector2();
+            // Vector2 r3 = Rule3Align(i);
 
             vx[i] += r1.x + r2.x + r3.x;
             vy[i] += r1.y + r2.y + r3.y;
@@ -206,8 +212,8 @@ void testScreen(Canvas& canvas, unsigned numBoids) {
 
         // #pragma acc parallel loop independent num_gangs(numThreads)
         for (int i = 0; i < boids.size(); ++i) {
-            bx[i] += 0.01 * vx[i];
-            by[i] += 0.01 * vy[i];
+            bx[i] += 0.005 * vx[i];
+            by[i] += 0.005 * vy[i];
         }
 
         float b = omp_get_wtime();
@@ -268,7 +274,7 @@ Vector2 Rule2Avoid(int boidIndex) {
     for (int i = 0; i < numBoids; ++i) {
         if (i == boidIndex) continue;
 
-        if (distance(bx[boidIndex], by[boidIndex], bx[i], by[i]) < 100) {
+        if (distance(bx[boidIndex], by[boidIndex], bx[i], by[i]) < 120) {
             c = c - Vector2(bx[boidIndex], by[boidIndex]) + Vector2(bx[i], by[i]);
         }
     }
@@ -287,13 +293,13 @@ Vector2 Rule3Align(int boidIndex) {
 
     z *= 1. / (numBoids - 1);
     
-    return Vector2(z.x - vx[boidIndex], z.y - vy[boidIndex]) * 0.125;
+    return Vector2(z.x - vx[boidIndex], z.y - vy[boidIndex]) * 0.05;
 }
 
 int main (int argc, char* argv[]) {
     std::cout << "Hello world!" <<  std::endl;
     
-    numBoids = 128;
+    numBoids = 1024;
     bx  = (float*) malloc(numBoids * sizeof(float));
     by  = (float*) malloc(numBoids * sizeof(float));
     vx  = (float*) malloc(numBoids * sizeof(float));
