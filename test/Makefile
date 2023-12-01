@@ -56,6 +56,9 @@
 # 			-I$(TSGL_HOME)/include/TSGL \
 # 			-I$(TSGL_HOME)/include/freetype2
 
+# HPC Compiler Reference Manual
+# https://docs.nvidia.com/hpc-sdk/compilers/hpc-compilers-ref-guide/index.html
+
 INCLUDE_FLAGS = -I$(TSGL_HOME)/include/TSGL \
 				-I$(TSGL_HOME)/include/freetype2
 LIBRARY_FLAGS = -ltsgl -lfreetype -lGLEW -lglfw -lGL -lGLU
@@ -68,12 +71,27 @@ GCC_OPT = -Og
 OMP = -fopenmp
 NVC_OPT = -fast
 
+# Accept only ISO conforming C++ code
+ISO_CONFORMING = -a 
+
+# Prints warnings from included system header files
+PEDANTIC_WARNING = --pedantic
+
+# instructs the compiler to display all error messages (inform, warn, severe and fatal).
+INFORM_WARNINGS = -Minform=inform
+
+WARNINGS = $(ISO_CONFORMING) $(PEDANTIC_WARNING) $(INFORM_WARNINGS)
+
 TARGET = test
+	
 $(TARGET)MP: $(TARGET).cpp
-	nvc++ $(NVC_OPT) $(LIBRARY_FLAGS) $(INCLUDE_FLAGS) $(OMP) $(TARGET).cpp -o $(TARGET)MP $(ACC_MULTICORE)
+	nvc++ $(NVC_OPT) $(LIBRARY_FLAGS) $(INCLUDE_FLAGS) $(OMP) $(TARGET).cpp -o $(TARGET)MP $(ACC_MULTICORE) $(WARNINGS)
 
 $(TARGET)GPU: $(TARGET).cpp
 	nvc++ $(NVC_OPT) $(LIBRARY_FLAGS) $(INCLUDE_FLAGS) $(OMP) $(TARGET).cpp -o $(TARGET)GPU $(ACC_GPU) -DGPU
+
+all:
+	$(TARGET)MP $(TARGET)GPU
 
 clean:
 	rm -rf $(TARGET)MP $(TARGET)GPU
