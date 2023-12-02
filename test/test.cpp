@@ -25,23 +25,36 @@ int numThreads = 8;
         boids new velocity x
         boids new velocity y
 */
-float *bx;
+float *bx;  // x, y
 float *by;
-float *vx;  
+
+float *vx;  // vel x, y
 float *vy;
-float *nvx; 
+float *nvx; // new vel x, y
 float *nvy;
 
 
 size_t numBoids = 128;
 
+void testScreen(Canvas &canvas, unsigned numBoids);
 
 Vector2 Rule1GroupUp(int boidIndex);
 Vector2 Rule2Avoid(int boidIndex);
 Vector2 Rule3Align(int boidIndex);
+Vector2 Rule4Boundary(int boidIndex, int WW, int WH, float vel);
+
+void RuleEndLimitSpeed(int boidIndex, float vlim);
 
 inline float distance(float x1, float y1, float x2, float y2) {
     return sqrt(abs(x2-x1)*abs(x2-x1) + abs(y2-y1)*abs(y2-y1));
+}
+
+void flushNewToOld() {
+    #pragma acc parallel loop independent collapse(1) num_gangs(numThreads)
+    for (size_t i = 0; i < numBoids; ++i) {
+        vx[i] = nvx[i];
+        vy[i] = nvy[i];
+    }
 }
 
 class boid {
@@ -110,8 +123,8 @@ void initiateBoids(int WW, int WH, std::vector<std::unique_ptr<boid>>& boids, Ca
         float y = rand() % WH - WH / 2; by[index] = y;
         boids[index] = std::make_unique<boid>(x, y, index, canvasP);
 
-        float velx = rand() % 100 - 50; vx[index] = velx;
-        float vely = rand() % 100 - 50; vy[index] = vely;
+        float velx = rand() % 10 - 5; nvx[index] = velx;
+        float vely = rand() % 10 - 5; nvy[index] = vely;
 
         boids[index]->updateDirection(velx, vely);
     }
@@ -127,6 +140,7 @@ void testScreen(Canvas& canvas, unsigned numBoids) {
 
     std::vector<std::unique_ptr<boid>> boids(numBoids);
     initiateBoids(WW, WH, boids, &canvas);
+    flushNewToOld();
     
 
     // boid* b = new boid(0, 0, 0, canvas);
@@ -177,7 +191,7 @@ void testScreen(Canvas& canvas, unsigned numBoids) {
 
     canvas.setShowFPS(true);
     while (canvas.isOpen()) {
-        // canvas.sleep(); // This slows it dowsn
+        canvas.sleep(); // This slows it down
         // printf("fps: %f\n", canvas.getFPS());
 
         // #pragma acc parallel loop independent num_gangs(numThreads)
@@ -196,34 +210,38 @@ void testScreen(Canvas& canvas, unsigned numBoids) {
             // printf("%d\n", omp_get_thread_num());
             Vector2 r1 = Rule1GroupUp(i);
 
-            // if (i == 0) {
-            //     printf("r1 = (%f, %f)\n", r1.x, r1.y);
-            // }
-
 
             Vector2 r2 = Rule2Avoid(i);
 
 
-            Vector2 r3 = Vector2();
-            // Vector2 r3 = Rule3Align(i);
+            // Vector2 r3 = Vector2();
+            Vector2 r3 = Rule3Align(i);
 
-            vx[i] += r1.x + r2.x + r3.x;
-            vy[i] += r1.y + r2.y + r3.y;
+            // Vector2 r4 = Vector2();
+            Vector2 r4 = Rule4Boundary(i, WW, WH, 10);
+
+            nvx[i] = vx[i] + r1.x + r2.x + r3.x + r4.x;
+            nvy[i] = vy[i] + r1.y + r2.y + r3.y + r4.y;
+
+            RuleEndLimitSpeed(i, 50.);
         }
 
         // printf("Speed of index 0: (%f, %f)\n", vx[0], vy[0]);
 
 
-        float a = omp_get_wtime();
+        // float a = omp_get_wtime();
 
-        #pragma acc parallel loop independent num_gangs(numThreads)
-        for (int i = 0; i < boids.size(); ++i) {
-            bx[i] += 0.005 * vx[i];
-            by[i] += 0.005 * vy[i];
+        // #pragma acc parallel loop independent num_gangs(numThreads)
+        for (int i = 0; i < numBoids; ++i) {
+            by[i] += 0.5 * nvy[i];
+            bx[i] += 0.5 * nvx[i];
         }
+
+        flushNewToOld();
 
         float b = omp_get_wtime();
 
+        // Update physical appearance of boids
         #pragma acc parallel loop independent num_gangs(numThreads)
         for (int i = 0; i < boids.size(); ++i) {
             boids[i]->updatePosition(bx[i], by[i]);
@@ -267,7 +285,8 @@ inline Vector2 Rule1GroupUp(int boidIndex) {
 
     p *= 1. / (numBoids - 1);
 
-    return Vector2(p.x - bx[boidIndex], p.y - by[boidIndex]) * 0.01;
+    // return Vector2(p.x - bx[boidIndex], p.y - by[boidIndex]) * 0.01;
+    return (p - Vector2(bx[boidIndex], by[boidIndex])) * 0.01;
 }
 
 inline Vector2 Rule2Avoid(int boidIndex) {
@@ -295,13 +314,58 @@ inline Vector2 Rule3Align(int boidIndex) {
 
     z *= 1. / (numBoids - 1);
     
-    return Vector2(z.x - vx[boidIndex], z.y - vy[boidIndex]) * 0.05;
+    // return Vector2(z.x - vx[boidIndex], z.y - vy[boidIndex]) * 0.125;
+    return (z - Vector2(vx[boidIndex], vy[boidIndex])) * 0.125;
+}
+
+inline Vector2 Rule4Boundary(int boidIndex, int WW, int WH, float vel) {
+    Vector2 ret(0., 0.);
+
+    int xmin = -WW / 2,
+        xmax = WW / 2,
+        ymin = -WH / 2,
+        ymax = WH / 2;
+
+    if (bx[boidIndex] < xmin) {
+        ret.x = vel;
+    }
+    else if (bx[boidIndex > xmax]) {
+        ret.x = -vel;
+    }
+
+    if (by[boidIndex] < ymin) {
+        ret.y = vel;
+    }
+    else if (by[boidIndex] > ymax) {
+        ret.y = -vel;
+    }
+
+    // if (abs(bx[boidIndex]) > (WW / 2)) {
+    //     ret.x = 0. - bx[boidIndex];
+    // }
+
+    // if (abs(bx[boidIndex] > (WH / 2))) {
+    //     ret.y = 0 - by[boidIndex];
+    // }
+
+    return ret;
+}
+
+inline void RuleEndLimitSpeed(int boidIndex, float vlim) {
+    Vector2 bVel(nvx[boidIndex], nvy[boidIndex]);
+
+    if (bVel.length() > vlim) {
+        bVel = (bVel * (1. / bVel.length())) * vlim;
+    }
+
+    nvx[boidIndex] = bVel.x;
+    nvy[boidIndex] = bVel.y;
 }
 
 int main (int argc, char* argv[]) {
     std::cout << "Hello world!" <<  std::endl;
     
-    numBoids = 500;
+    numBoids = 50;
     bx  = (float*) malloc(numBoids * sizeof(float));
     by  = (float*) malloc(numBoids * sizeof(float));
     vx  = (float*) malloc(numBoids * sizeof(float));
@@ -372,8 +436,8 @@ int main (int argc, char* argv[]) {
             // Vector2 r3 = Vector2();
             Vector2 r3 = Rule3Align(i);
 
-            vx[i] += r1.x + r2.x + r3.x;
-            vy[i] += r1.y + r2.y + r3.y;
+            nvx[i] += r1.x + r2.x + r3.x;
+            nvy[i] += r1.y + r2.y + r3.y;
         }
 
         // printf("Speed of index 0: (%f, %f)\n", vx[0], vy[0]);
@@ -383,9 +447,11 @@ int main (int argc, char* argv[]) {
 
         // #pragma acc parallel loop independent num_gangs(numThreads)
         for (int i = 0; i < boids.size(); ++i) {
-            bx[i] += 0.005 * vx[i];
-            by[i] += 0.005 * vy[i];
+            by[i] += 0.001 * nvy[i];
+            bx[i] += 0.001 * nvx[i];
         }
+
+        flushNewToOld();
     }
 
     double b = omp_get_wtime();
