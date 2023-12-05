@@ -208,14 +208,14 @@ void testScreen(Canvas& canvas, unsigned numBoids) {
             // printf("thread: %d\n", omp_get_thread_num());
             // printf("Inside fork\n");
             // printf("%d\n", omp_get_thread_num());
-            Vector2 r1 = Rule1GroupUp(i);
+            Vector2 r1 = Rule1GroupUp(i) * 0.05;
 
 
-            Vector2 r2 = Rule2Avoid(i);
+            Vector2 r2 = Rule2Avoid(i) * -1;
 
 
-            // Vector2 r3 = Vector2();
-            Vector2 r3 = Rule3Align(i);
+            Vector2 r3 = Vector2();
+            // Vector2 r3 = Rule3Align(i);
 
             // Vector2 r4 = Vector2();
             Vector2 r4 = Rule4Boundary(i, WW, WH, 10);
@@ -233,8 +233,8 @@ void testScreen(Canvas& canvas, unsigned numBoids) {
 
         // #pragma acc parallel loop independent num_gangs(numThreads)
         for (int i = 0; i < numBoids; ++i) {
-            by[i] += 0.5 * nvy[i];
-            bx[i] += 0.5 * nvx[i];
+            by[i] += 0.01 * nvy[i];
+            bx[i] += 0.01 * nvx[i];
         }
 
         flushNewToOld();
@@ -365,7 +365,7 @@ inline void RuleEndLimitSpeed(int boidIndex, float vlim) {
 int main (int argc, char* argv[]) {
     std::cout << "Hello world!" <<  std::endl;
     
-    numBoids = 50;
+    numBoids = 2048;
     bx  = (float*) malloc(numBoids * sizeof(float));
     by  = (float*) malloc(numBoids * sizeof(float));
     vx  = (float*) malloc(numBoids * sizeof(float));
