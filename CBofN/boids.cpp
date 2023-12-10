@@ -393,9 +393,7 @@ void compute_new_heading(int which)
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 int main(int argc, char **argv)
-{
-	extern int plot_mag;
-	extern int plot_inverse;
+{ 
 	int i, j;
 
 	// get_options(argc, argv, options, help_string);
@@ -413,12 +411,12 @@ int main(int argc, char **argv)
 	vangle = vangle * M_PI / 180.0;
 
 	/* Make space for the positions, velocities, and new velocities. */
-	xp = (float *)malloc(sizeof(float) * num);
-	yp = (float *)malloc(sizeof(float) * num);
-	xv = (float *)malloc(sizeof(float) * num);
-	yv = (float *)malloc(sizeof(float) * num);
-	xnv = (float *)malloc(sizeof(float) * num);
-	ynv = (float *)malloc(sizeof(float) * num);
+	xp  = (float *) malloc(sizeof(float) * num);
+	yp  = (float *) malloc(sizeof(float) * num);
+	xv  = (float *) malloc(sizeof(float) * num);
+	yv  = (float *) malloc(sizeof(float) * num);
+	xnv = (float *) malloc(sizeof(float) * num);
+	ynv = (float *) malloc(sizeof(float) * num);
 
 	/* Set to random initial conditions. */
 	for (i = 0; i < num; i++)
