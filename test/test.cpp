@@ -4,6 +4,8 @@
 #include <tsgl.h>
 #include "myVector.cpp"
 
+#include "boids.cpp"
+
 #include <vector>
 #include <memory>
 
@@ -25,36 +27,21 @@ int numThreads = 8;
         boids new velocity x
         boids new velocity y
 */
-float *bx;  // x, y
-float *by;
+// float *bx;  // x, y
+// float *by;
 
-float *vx;  // vel x, y
-float *vy;
-float *nvx; // new vel x, y
-float *nvy;
+// float *vx;  // vel x, y
+// float *vy;
+// float *nvx; // new vel x, y
+// float *nvy;
 
 
 size_t numBoids = 128;
 
 void testScreen(Canvas &canvas, unsigned numBoids);
 
-Vector2 Rule1GroupUp(int boidIndex);
-Vector2 Rule2Avoid(int boidIndex);
-Vector2 Rule3Align(int boidIndex);
-Vector2 Rule4Boundary(int boidIndex, int WW, int WH, float vel);
-
-void RuleEndLimitSpeed(int boidIndex, float vlim);
-
 inline float distance(float x1, float y1, float x2, float y2) {
     return sqrt(abs(x2-x1)*abs(x2-x1) + abs(y2-y1)*abs(y2-y1));
-}
-
-void flushNewToOld() {
-    #pragma acc parallel loop independent collapse(1) num_gangs(numThreads)
-    for (size_t i = 0; i < numBoids; ++i) {
-        vx[i] = nvx[i];
-        vy[i] = nvy[i];
-    }
 }
 
 class boid {
@@ -118,15 +105,17 @@ public:
  */
 void initiateBoids(int WW, int WH, std::vector<std::unique_ptr<boid>>& boids, Canvas* canvasP) {
     // #pragma acc parallel loop independent collapse(1) num_gangs(numThreads) 
-    for (int index = 0; index < boids.size(); ++index) {
-        float x = rand() % WW - WW / 2; bx[index] = x;
-        float y = rand() % WH - WH / 2; by[index] = y;
-        boids[index] = std::make_unique<boid>(x, y, index, canvasP);
+    for (int i = 0; i < boids.size(); ++i) {
+        xp[i] = random_range(-WW / 2, WW / 2);
+        yp[i] = random_range(-WH / 2, WH / 2);
 
-        float velx = rand() % 10 - 5; nvx[index] = velx;
-        float vely = rand() % 10 - 5; nvy[index] = vely;
+        xv[i] = random_range(-1.0, 1.0);
+        yv[i] = random_range(-1.0, 1.0);
+        norm(&xv[i], &yv[i]);
 
-        boids[index]->updateDirection(velx, vely);
+        boids[i] = std::make_unique<boid>(xp[i], yp[i], i, canvasP);
+
+        boids[i]->updateDirection(xv[i], yv[i]);
     }
 
     #ifdef DEBUG
@@ -140,58 +129,14 @@ void testScreen(Canvas& canvas, unsigned numBoids) {
 
     std::vector<std::unique_ptr<boid>> boids(numBoids);
     initiateBoids(WW, WH, boids, &canvas);
-    flushNewToOld();
-    
-
-    // boid* b = new boid(0, 0, 0, canvas);
-
-    // Background* back = canvas.getBackground();
-    // back->drawSquare(0, 0, 0, 50, 0, 0, 0, WHITE, true);
-
-    // back->drawPixel(0, 0, ColorInt(120, 120, 120));
+    // flushNewToOld();
 
 
 
-
-    /* NOTES:
-        Background has (0, 0) in the center for some reason
-
-        Whenever I want to flush the updated arrays to the background, 
-        I should do this on the CPU. 
-
-        Due to what is likely the mutex lock on editing the background pixels,
-        updating the background pixels is simply slower when threaded. 
-    */
-    // #define TEST
-    #ifdef TEST
-    int w = WW / 2;
-    int h = WH / 2;
-    double startT = omp_get_wtime();
-    int i, j;
-    #ifdef GPU
-    #pragma acc kernels
-    #pragma acc loop independent collapse(2) private(i, j)
-    #else
-    #pragma acc parallel loop independent collapse(2) private(i, j) num_gangs(numThreads)
-    #endif
-    for (i = -h; i < h; ++i) {
-        for (j = -w; j < w; ++j) {
-            int color = 240;
-
-            #ifndef GPU
-            color = omp_get_thread_num() * 25 + 25;
-            #endif
-
-            back->drawPixel(j, i, ColorInt(color));
-            // canvas.sleepFor(0.000005);
-        }
-    }
-    printf("Duration: %lf\n", omp_get_wtime() - startT);
-    #endif
 
     canvas.setShowFPS(true);
     while (canvas.isOpen()) {
-        canvas.sleep(); // This slows it down
+        // canvas.sleep(); // This slows it down
         // printf("fps: %f\n", canvas.getFPS());
 
         // #pragma acc parallel loop independent num_gangs(numThreads)
@@ -204,181 +149,72 @@ void testScreen(Canvas& canvas, unsigned numBoids) {
         #pragma acc parallel loop independent num_gangs(numThreads) collapse(1)
         #endif
         for (int i = 0; i < numBoids; ++i) {
-            boids[i]->setColor(ColorFloat(omp_get_thread_num() / 8. + 0.1));
-            // printf("thread: %d\n", omp_get_thread_num());
-            // printf("Inside fork\n");
-            // printf("%d\n", omp_get_thread_num());
-            Vector2 r1 = Rule1GroupUp(i) * 0.05;
-
-
-            Vector2 r2 = Rule2Avoid(i) * -1;
-
-
-            Vector2 r3 = Vector2();
-            // Vector2 r3 = Rule3Align(i);
-
-            // Vector2 r4 = Vector2();
-            Vector2 r4 = Rule4Boundary(i, WW, WH, 10);
-
-            nvx[i] = vx[i] + r1.x + r2.x + r3.x + r4.x;
-            nvy[i] = vy[i] + r1.y + r2.y + r3.y + r4.y;
-
-            RuleEndLimitSpeed(i, 50.);
+            compute_new_heading(i);
         }
 
-        // printf("Speed of index 0: (%f, %f)\n", vx[0], vy[0]);
 
 
-        // float a = omp_get_wtime();
-
-        // #pragma acc parallel loop independent num_gangs(numThreads)
+        // Update Positions
+        #pragma acc parallel loop independent num_gangs(numThreads) collapse(1)
         for (int i = 0; i < numBoids; ++i) {
-            by[i] += 0.01 * nvy[i];
-            bx[i] += 0.01 * nvx[i];
-        }
-
-        flushNewToOld();
-
-        float b = omp_get_wtime();
-
-        // Update physical appearance of boids
-        #pragma acc parallel loop independent num_gangs(numThreads)
-        for (int i = 0; i < boids.size(); ++i) {
-            boids[i]->updatePosition(bx[i], by[i]);
-            boids[i]->updateDirection(vx[i], vy[i]);
-        }
-
-        // float c = omp_get_wtime();
-
-        // printf("Time to update positions: %f\nTime to update boid objects: %f\nTotal time elapsed: %f\n\n", b - a, c - b, c - a);
-
-        // for (int iter = 0; iter < 1000; ++iter) {
-            /*
-            pragma compiler directives
-            for each boid i
-                for each boid j
-                    if j is i continue
-
-                    do the boid calculation stuff, new position and velocity stored in new arrays
-
+            xv[i] = xnv[i];
+            yv[i] = ynv[i];
+            xp[i] += xv[i] * dt;
+            yp[i] += yv[i] * dt;
             
-            update position prev position to new position
+            // Wrap around screen coordinates
+            if (xp[i] < -WW / 2) {
+                xp[i] += WW;
+            }
+            else if (xp[i] >= WW / 2) {
+                xp[i] -= WW;
+            }
 
-            have CPU update screen
-            */
+            if (yp[i] < -WH / 2) {
+                yp[i] += WH;
+            }
+            else if (yp[i] >= WH / 2) {
+                yp[i] -= WH;
+            }
 
-        // }
+
+            boids[i]->updatePosition(xp[i], yp[i]);
+            boids[i]->updateDirection(xv[i], yv[i]);
+
+            boids[i]->setColor(ColorFloat(omp_get_thread_num() / 6. + 0.1));
+        }
     }
 
     
 } 
 
-inline Vector2 Rule1GroupUp(int boidIndex) {
-    Vector2 p(0., 0.);
-    
-    for (int i = 0; i < numBoids; ++i) {
-        if (i == boidIndex) continue;
-
-        p.x += bx[boidIndex];
-        p.y += by[boidIndex];
-    }
-
-    p *= 1. / (numBoids - 1);
-
-    // return Vector2(p.x - bx[boidIndex], p.y - by[boidIndex]) * 0.01;
-    return (p - Vector2(bx[boidIndex], by[boidIndex])) * 0.01;
-}
-
-inline Vector2 Rule2Avoid(int boidIndex) {
-    Vector2 c(0., 0.);
-
-    for (int i = 0; i < numBoids; ++i) {
-        if (i == boidIndex) continue;
-
-        if (distance(bx[boidIndex], by[boidIndex], bx[i], by[i]) < 120) {
-            c = c - Vector2(bx[boidIndex], by[boidIndex]) + Vector2(bx[i], by[i]);
-        }
-    }
-    
-    return c;
-}
-
-inline Vector2 Rule3Align(int boidIndex) {
-    Vector2 z(0., 0.);
-
-    for (int i = 0; i < numBoids; ++i) {
-        if (i == boidIndex) continue;
-
-        z += Vector2(vx[i], vy[i]);
-    }
-
-    z *= 1. / (numBoids - 1);
-    
-    // return Vector2(z.x - vx[boidIndex], z.y - vy[boidIndex]) * 0.125;
-    return (z - Vector2(vx[boidIndex], vy[boidIndex])) * 0.125;
-}
-
-inline Vector2 Rule4Boundary(int boidIndex, int WW, int WH, float vel) {
-    Vector2 ret(0., 0.);
-
-    int xmin = -WW / 2,
-        xmax = WW / 2,
-        ymin = -WH / 2,
-        ymax = WH / 2;
-
-    if (bx[boidIndex] < xmin) {
-        ret.x = vel;
-    }
-    else if (bx[boidIndex > xmax]) {
-        ret.x = -vel;
-    }
-
-    if (by[boidIndex] < ymin) {
-        ret.y = vel;
-    }
-    else if (by[boidIndex] > ymax) {
-        ret.y = -vel;
-    }
-
-    // if (abs(bx[boidIndex]) > (WW / 2)) {
-    //     ret.x = 0. - bx[boidIndex];
-    // }
-
-    // if (abs(bx[boidIndex] > (WH / 2))) {
-    //     ret.y = 0 - by[boidIndex];
-    // }
-
-    return ret;
-}
-
-inline void RuleEndLimitSpeed(int boidIndex, float vlim) {
-    Vector2 bVel(nvx[boidIndex], nvy[boidIndex]);
-
-    if (bVel.length() > vlim) {
-        bVel = (bVel * (1. / bVel.length())) * vlim;
-    }
-
-    nvx[boidIndex] = bVel.x;
-    nvy[boidIndex] = bVel.y;
-}
-
-int main (int argc, char* argv[]) {
+int main (int argc, char* argv[]) 
+{
     std::cout << "Hello world!" <<  std::endl;
     
-    numBoids = 2048;
-    bx  = (float*) malloc(numBoids * sizeof(float));
-    by  = (float*) malloc(numBoids * sizeof(float));
-    vx  = (float*) malloc(numBoids * sizeof(float));
-    vy  = (float*) malloc(numBoids * sizeof(float));
-    nvx = (float*) malloc(numBoids * sizeof(float));
-    nvy = (float*) malloc(numBoids * sizeof(float));
+    num = 4096;
+    numBoids = num;
+
+    width = 1600;
+    height = 900;
+    /* Make space for the positions, velocities, and new velocities. */
+	xp  = (float *) malloc(sizeof(float) * num);
+	yp  = (float *) malloc(sizeof(float) * num);
+	xv  = (float *) malloc(sizeof(float) * num);
+	yv  = (float *) malloc(sizeof(float) * num);
+	xnv = (float *) malloc(sizeof(float) * num);
+	ynv = (float *) malloc(sizeof(float) * num);
+
+
 
     numThreads = atoi(argv[1]);
     printf("NumThreads: %d\n", numThreads);
 
-    Canvas can(-1, -1, 1600, 900, "Test Screen", BLACK);
+    Canvas can(-1, -1, width, height, "Test Screen", BLACK);
     can.run(testScreen, numBoids);
     
+
+
     // #define TEST2
     #ifdef TEST2
     size_t size = 20000;
@@ -403,67 +239,12 @@ int main (int argc, char* argv[]) {
     }
     #endif
 
-    std::vector<std::unique_ptr<boid>> boids(numBoids);
-    initiateBoids(1600, 900, boids, &can);
-
-    double a = omp_get_wtime();
-    
-
-    for (int it = 0; it < 1000; ++it) {
-        printf("it: %d\n", it);
-        #ifdef GPU
-        #pragma acc kernels
-        #pragma acc data copyin(bx[:numBoids], by[:numBoids]) copy(vx[:numBoids], vy[:numBoids])
-        #pragma acc loop independent
-        #else
-        #pragma acc parallel loop independent num_gangs(numThreads) collapse(1)
-        #endif
-        for (int i = 0; i < numBoids; ++i) {
-            // boids[i]->setColor(ColorFloat(omp_get_thread_num() / 8. + 0.1));
-            // printf("thread: %d\n", omp_get_thread_num());
-            // printf("Inside fork\n");
-            // printf("%d\n", omp_get_thread_num());
-            Vector2 r1 = Rule1GroupUp(i);
-
-            // if (i == 0) {
-            //     printf("r1 = (%f, %f)\n", r1.x, r1.y);
-            // }
-
-
-            Vector2 r2 = Rule2Avoid(i);
-
-
-            // Vector2 r3 = Vector2();
-            Vector2 r3 = Rule3Align(i);
-
-            nvx[i] += r1.x + r2.x + r3.x;
-            nvy[i] += r1.y + r2.y + r3.y;
-        }
-
-        // printf("Speed of index 0: (%f, %f)\n", vx[0], vy[0]);
-
-
-        // float a = omp_get_wtime();
-
-        // #pragma acc parallel loop independent num_gangs(numThreads)
-        for (int i = 0; i < boids.size(); ++i) {
-            by[i] += 0.001 * nvy[i];
-            bx[i] += 0.001 * nvx[i];
-        }
-
-        flushNewToOld();
-    }
-
-    double b = omp_get_wtime();
-
-    printf("#%d boids, Time taken for 1000 iterations: %lf s\n", numBoids, b - a);
-
-    free(bx);
-    free(by);
-    free(vx);
-    free(vy);
-    free(nvx);
-    free(nvy);
+    free(xp);
+    free(yp);
+    free(xv);
+    free(yv);
+    free(xnv);
+    free(ynv);
 
     return 0;
 }
