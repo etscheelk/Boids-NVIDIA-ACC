@@ -4,7 +4,25 @@
 #include <tsgl.h>
 #include "myVector.cpp"
 
-#include "boids.cpp"
+// #ifndef BOIDS_CPP
+// #include "boids.cpp"
+// #endif
+
+#ifdef GPU
+#include "calcAllGPU.cpp"
+#else
+#include "calcAllMP.cpp"
+#endif
+
+namespace calcAllMP 
+{
+    void calculate_all_headings(int numThreads);
+}
+
+namespace calcAllGPU 
+{
+    void calculate_all_headings();
+}
 
 #include <vector>
 #include <memory>
@@ -134,23 +152,29 @@ void testScreen(Canvas& canvas, unsigned numBoids) {
 
 
 
-    canvas.setShowFPS(true);
+    // canvas.setShowFPS(true);
     while (canvas.isOpen()) {
-        // canvas.sleep(); // This slows it down
+        canvas.sleep(); // This slows it down
         // printf("fps: %f\n", canvas.getFPS());
 
         // #pragma acc parallel loop independent num_gangs(numThreads)
         
+        // #ifdef GPU
+        // #pragma acc kernels
+        // #pragma acc data copyin(bx[:numBoids], by[:numBoids]) copy(vx[:numBoids], vy[:numBoids])
+        // #pragma acc loop independent
+        // #else
+        // #pragma acc parallel loop independent num_gangs(numThreads) collapse(1)
+        // #endif
+        // for (int i = 0; i < numBoids; ++i) {
+        //     compute_new_heading(i);
+        // }
+
         #ifdef GPU
-        #pragma acc kernels
-        #pragma acc data copyin(bx[:numBoids], by[:numBoids]) copy(vx[:numBoids], vy[:numBoids])
-        #pragma acc loop independent
+        calcAllGPU::calculate_all_headings();
         #else
-        #pragma acc parallel loop independent num_gangs(numThreads) collapse(1)
+        calcAllMP::calculate_all_headings(numThreads);
         #endif
-        for (int i = 0; i < numBoids; ++i) {
-            compute_new_heading(i);
-        }
 
 
 
@@ -181,7 +205,7 @@ void testScreen(Canvas& canvas, unsigned numBoids) {
             boids[i]->updatePosition(xp[i], yp[i]);
             boids[i]->updateDirection(xv[i], yv[i]);
 
-            boids[i]->setColor(ColorFloat(omp_get_thread_num() / 6. + 0.1));
+            // boids[i]->setColor(ColorFloat(omp_get_thread_num() / 6. + 0.1));
         }
     }
 
@@ -192,7 +216,7 @@ int main (int argc, char* argv[])
 {
     std::cout << "Hello world!" <<  std::endl;
     
-    num = 4096;
+    num = 512;
     numBoids = num;
 
     width = 1600;

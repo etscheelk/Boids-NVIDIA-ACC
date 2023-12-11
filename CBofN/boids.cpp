@@ -1,4 +1,5 @@
-
+#ifndef BOIDS_CPP
+#define BOIDS_CPP
 /* NAME
  *   boids - simulate a flock of android birds from Brooklyn
  * NOTES
@@ -485,3 +486,4 @@ int main(int argc, char **argv)
 }
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+#endif
