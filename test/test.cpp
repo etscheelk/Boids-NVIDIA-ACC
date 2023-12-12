@@ -8,21 +8,14 @@
 // #include "boids.cpp"
 // #endif
 
-#ifdef GPU
-#include "calcAllGPU.cpp"
-#else
-#include "calcAllMP.cpp"
-#endif
-
-namespace calcAllMP 
-{
-    void calculate_all_headings(int numThreads);
-}
-
-namespace calcAllGPU 
-{
-    void calculate_all_headings();
-}
+// #ifdef GPU
+// #include "calcAllGPU.cpp"
+// #include "boids.cpp"
+#include "calcAllGPU.hpp"
+// #include "boids.hpp"
+// #else
+// #include "calcAllMP.cpp"
+// #endif
 
 #include <vector>
 #include <memory>
@@ -34,25 +27,6 @@ namespace calcAllGPU
 using namespace tsgl;
 
 int numThreads = 8;
-/*
-    Arrays I need:
-        boids x's
-        boids y's
-        
-        boids velocity x
-        boids velocity y
-        
-        boids new velocity x
-        boids new velocity y
-*/
-// float *bx;  // x, y
-// float *by;
-
-// float *vx;  // vel x, y
-// float *vy;
-// float *nvx; // new vel x, y
-// float *nvy;
-
 
 size_t numBoids = 128;
 
@@ -124,16 +98,16 @@ public:
 void initiateBoids(int WW, int WH, std::vector<std::unique_ptr<boid>>& boids, Canvas* canvasP) {
     // #pragma acc parallel loop independent collapse(1) num_gangs(numThreads) 
     for (int i = 0; i < boids.size(); ++i) {
-        xp[i] = random_range(-WW / 2, WW / 2);
-        yp[i] = random_range(-WH / 2, WH / 2);
+        boids::xp[i] = boids::random_range(-WW / 2, WW / 2);
+        boids::yp[i] = boids::random_range(-WH / 2, WH / 2);
 
-        xv[i] = random_range(-1.0, 1.0);
-        yv[i] = random_range(-1.0, 1.0);
-        norm(&xv[i], &yv[i]);
+        boids::xv[i] = boids::random_range(-1.0, 1.0);
+        boids::yv[i] = boids::random_range(-1.0, 1.0);
+        boids::norm(&boids::xv[i], &boids::yv[i]);
 
-        boids[i] = std::make_unique<boid>(xp[i], yp[i], i, canvasP);
+        boids[i] = std::make_unique<boid>(boids::xp[i], boids::yp[i], i, canvasP);
 
-        boids[i]->updateDirection(xv[i], yv[i]);
+        boids[i]->updateDirection(boids::xv[i], boids::yv[i]);
     }
 
     #ifdef DEBUG
@@ -170,40 +144,40 @@ void testScreen(Canvas& canvas, unsigned numBoids) {
         //     compute_new_heading(i);
         // }
 
-        #ifdef GPU
+        // #ifdef GPU
         calcAllGPU::calculate_all_headings();
-        #else
-        calcAllMP::calculate_all_headings(numThreads);
-        #endif
+        // #else
+        // calcAllMP::calculate_all_headings(numThreads);
+        // #endif
 
 
 
         // Update Positions
         #pragma acc parallel loop independent num_gangs(numThreads) collapse(1)
         for (int i = 0; i < numBoids; ++i) {
-            xv[i] = xnv[i];
-            yv[i] = ynv[i];
-            xp[i] += xv[i] * dt;
-            yp[i] += yv[i] * dt;
+            boids::xv[i] = boids::xnv[i];
+            boids::yv[i] = boids::ynv[i];
+            boids::xp[i] += boids::xv[i] * boids::dt;
+            boids::yp[i] += boids::yv[i] * boids::dt;
             
             // Wrap around screen coordinates
-            if (xp[i] < -WW / 2) {
-                xp[i] += WW;
+            if (boids::xp[i] < -WW / 2) {
+                boids::xp[i] += WW;
             }
-            else if (xp[i] >= WW / 2) {
-                xp[i] -= WW;
-            }
-
-            if (yp[i] < -WH / 2) {
-                yp[i] += WH;
-            }
-            else if (yp[i] >= WH / 2) {
-                yp[i] -= WH;
+            else if (boids::xp[i] >= WW / 2) {
+                boids::xp[i] -= WW;
             }
 
+            if (boids::yp[i] < -WH / 2) {
+                boids::yp[i] += WH;
+            }
+            else if (boids::yp[i] >= WH / 2) {
+                boids::yp[i] -= WH;
+            }
 
-            boids[i]->updatePosition(xp[i], yp[i]);
-            boids[i]->updateDirection(xv[i], yv[i]);
+
+            boids[i]->updatePosition(boids::xp[i], boids::yp[i]);
+            boids[i]->updateDirection(boids::xv[i], boids::yv[i]);
 
             // boids[i]->setColor(ColorFloat(omp_get_thread_num() / 6. + 0.1));
         }
@@ -216,27 +190,27 @@ int main (int argc, char* argv[])
 {
     std::cout << "Hello world!" <<  std::endl;
     
-    num = 1024;
-    numBoids = num;
+    boids::num = 1024;
+    numBoids = boids::num;
 
     // wrand = 0.10;
 
-    width = 800;
-    height = 800;
+    boids::width = 800;
+    boids::height = 800;
     /* Make space for the positions, velocities, and new velocities. */
-	xp  = (float *) malloc(sizeof(float) * num);
-	yp  = (float *) malloc(sizeof(float) * num);
-	xv  = (float *) malloc(sizeof(float) * num);
-	yv  = (float *) malloc(sizeof(float) * num);
-	xnv = (float *) malloc(sizeof(float) * num);
-	ynv = (float *) malloc(sizeof(float) * num);
+	boids::xp  = (float *) malloc(sizeof(float) * boids::num);
+	boids::yp  = (float *) malloc(sizeof(float) * boids::num);
+	boids::xv  = (float *) malloc(sizeof(float) * boids::num);
+	boids::yv  = (float *) malloc(sizeof(float) * boids::num);
+	boids::xnv = (float *) malloc(sizeof(float) * boids::num);
+	boids::ynv = (float *) malloc(sizeof(float) * boids::num);
 
 
 
     numThreads = atoi(argv[1]);
     printf("NumThreads: %d\n", numThreads);
 
-    Canvas can(-1, -1, width, height, "Test Screen", BLACK);
+    Canvas can(-1, -1, boids::width, boids::height, "Test Screen", BLACK);
     can.run(testScreen, numBoids);
     
 
@@ -265,12 +239,12 @@ int main (int argc, char* argv[])
     }
     #endif
 
-    free(xp);
-    free(yp);
-    free(xv);
-    free(yv);
-    free(xnv);
-    free(ynv);
+    free(boids::xp);
+    free(boids::yp);
+    free(boids::xv);
+    free(boids::yv);
+    free(boids::xnv);
+    free(boids::ynv);
 
     return 0;
 }
