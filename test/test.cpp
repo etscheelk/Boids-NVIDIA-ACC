@@ -216,11 +216,13 @@ int main (int argc, char* argv[])
 {
     std::cout << "Hello world!" <<  std::endl;
     
-    num = 512;
+    num = 1024;
     numBoids = num;
 
-    width = 1600;
-    height = 900;
+    // wrand = 0.10;
+
+    width = 800;
+    height = 800;
     /* Make space for the positions, velocities, and new velocities. */
 	xp  = (float *) malloc(sizeof(float) * num);
 	yp  = (float *) malloc(sizeof(float) * num);

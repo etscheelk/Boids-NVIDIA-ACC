@@ -130,7 +130,7 @@ float *xp, *yp, *xv, *yv, *xnv, *ynv;
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-float random_range(float low, float high)
+inline float random_range(float low, float high)
 {
   float tmp;
 
@@ -142,7 +142,7 @@ float random_range(float low, float high)
 
 /* Destructively normalize a vector. */
 
-void norm(float *x, float *y)
+inline void norm(float *x, float *y)
 {
 	float len;
 
