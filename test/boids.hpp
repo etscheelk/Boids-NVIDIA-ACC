@@ -1,4 +1,4 @@
-#pragma once
+// #pragma once
 #ifndef BOIDS_HPP
 #define BOIDS_HPP
 
@@ -43,11 +43,17 @@ namespace boids {
 
     float *xp, *yp, *xv, *yv, *xnv, *ynv;
 
+    #pragma acc routine
     float random_range(float low, float high);
 
+    #pragma acc routine
     void norm(float *x, float *y);
 
+    #pragma acc routine
     void compute_new_heading(int which);
+
+    #pragma acc routine
+    void compute_all_headings(int numThreads);
 }
 
 #endif

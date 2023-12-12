@@ -11,8 +11,12 @@
 // #ifdef GPU
 // #include "calcAllGPU.cpp"
 // #include "boids.cpp"
-#include "calcAllGPU.hpp"
-// #include "boids.hpp"
+// #include "calcAllGPU.hpp"
+
+// #ifndef BOIDS_HPP
+#include "boids.cpp"
+// #endif
+
 // #else
 // #include "calcAllMP.cpp"
 // #endif
@@ -95,7 +99,7 @@ public:
  * @param boids Passed reference to the list of boids
  * @param canvasP 
  */
-void initiateBoids(int WW, int WH, std::vector<std::unique_ptr<boid>>& boids, Canvas* canvasP) {
+void initiateBoidsDraw(int WW, int WH, std::vector<std::unique_ptr<boid>>& boids, Canvas* canvasP) {
     // #pragma acc parallel loop independent collapse(1) num_gangs(numThreads) 
     for (int i = 0; i < boids.size(); ++i) {
         boids::xp[i] = boids::random_range(-WW / 2, WW / 2);
@@ -120,7 +124,7 @@ void testScreen(Canvas& canvas, unsigned numBoids) {
               WH = canvas.getWindowHeight();
 
     std::vector<std::unique_ptr<boid>> boids(numBoids);
-    initiateBoids(WW, WH, boids, &canvas);
+    initiateBoidsDraw(WW, WH, boids, &canvas);
     // flushNewToOld();
 
 
@@ -145,18 +149,21 @@ void testScreen(Canvas& canvas, unsigned numBoids) {
         // }
 
         // #ifdef GPU
-        calcAllGPU::calculate_all_headings();
+        // calcAllGPU::calculate_all_headings();
         // #else
         // calcAllMP::calculate_all_headings(numThreads);
+        boids::compute_all_headings(numThreads);
         // #endif
 
 
 
         // Update Positions
+        #ifndef GPU
         #pragma acc parallel loop independent num_gangs(numThreads) collapse(1)
+        #endif
         for (int i = 0; i < numBoids; ++i) {
-            boids::xv[i] = boids::xnv[i];
-            boids::yv[i] = boids::ynv[i];
+            boids::xv[i]  = boids::xnv[i];
+            boids::yv[i]  = boids::ynv[i];
             boids::xp[i] += boids::xv[i] * boids::dt;
             boids::yp[i] += boids::yv[i] * boids::dt;
             
@@ -179,7 +186,7 @@ void testScreen(Canvas& canvas, unsigned numBoids) {
             boids[i]->updatePosition(boids::xp[i], boids::yp[i]);
             boids[i]->updateDirection(boids::xv[i], boids::yv[i]);
 
-            // boids[i]->setColor(ColorFloat(omp_get_thread_num() / 6. + 0.1));
+            boids[i]->setColor(ColorFloat(omp_get_thread_num() / 9. + 0.1));
         }
     }
 

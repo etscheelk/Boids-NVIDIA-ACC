@@ -120,18 +120,18 @@ using namespace boids;
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-float boids::random_range(float low, float high)
-{
-  float tmp;
+// float boids::random_range(float low, float high)
+// {
+//   float tmp;
 
-  tmp = fabs((float)(random()) / ((float) RAND_MAX + 1));
-  tmp = tmp * (high - low) + low;
-  return(tmp);
-}
+//   tmp = fabs((float)(random()) / ((float) RAND_MAX + 1));
+//   tmp = tmp * (high - low) + low;
+//   return(tmp);
+// }
 
 
 /* Destructively normalize a vector. */
-
+#pragma acc routine
 void boids::norm(float *x, float *y)
 {
 	float len;
@@ -149,6 +149,7 @@ void boids::norm(float *x, float *y)
 /* Compute the heading for a particular boid based on its current
    environment. */
 
+#pragma acc routine
 void boids::compute_new_heading(int which)
 {
 	int i, j, k, numcent = 0;
@@ -328,11 +329,11 @@ void boids::compute_new_heading(int which)
 	yt = ya * wcent + yb * wcopy + yc * wvoid + yd * wviso;
 
 	/* Optionally add some noise. */
-	if (wrand > 0)
-	{
-		xt += random_range(-1, 1) * wrand;
-		yt += random_range(-1, 1) * wrand;
-	}
+	// if (wrand > 0)
+	// {
+	// 	xt += random_range(-1, 1) * wrand;
+	// 	yt += random_range(-1, 1) * wrand;
+	// }
 
 	/* Update the velocity and renormalize if it is too small. */
 	xnv[which] = xv[which] * ddt + xt * (1 - ddt);
@@ -342,6 +343,20 @@ void boids::compute_new_heading(int which)
 	{
 		xnv[which] *= minv / d;
 		ynv[which] *= minv / d;
+	}
+}
+
+
+void boids::compute_all_headings(int numThreads) {
+	#ifdef GPU
+	#pragma acc kernels
+	#pragma acc loop independent
+	// #pragma acc routine(random) seq
+	#else
+	// #pragma acc parallel loop independent num_gangs(numThreads) collapse(1)
+	#endif
+	for (int i = 0; i < num; ++i) {
+		compute_new_heading(i);
 	}
 }
 
