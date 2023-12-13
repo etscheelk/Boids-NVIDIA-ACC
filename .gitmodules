@@ -1,0 +1,3 @@
+[submodule "project-start-points"]
+	path = project-start-points
+	url = git@github.com:mac-comp445-f23/project-starting-points-LollosaurusRex.git
