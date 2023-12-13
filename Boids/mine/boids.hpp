@@ -42,7 +42,7 @@ namespace boids {
 
     // LS use struct for default parameters
     // ETS moved to header file
-    struct Params params = 
+    struct Params defaultParams = 
     {
 		.width = 640, .height = 480, 
 		.num = 20, .len = 20, 
@@ -93,9 +93,9 @@ namespace boids {
 
     void norm(float* x, float* y);
 
-    void compute_new_headings(struct Params p, float* xp, float* yp, float* xv, float* yv, double* xnv, double* ynv);
+    void compute_new_headings(struct Params p, float* xp, float* yp, float* xv, float* yv, float* xnv, float* ynv);
 
-    void draw_boid(struct Params p, int which, int color, double *xp, double *yp, double *xv, double *yv);
+    void draw_boid(struct Params p, int which, int color, float *xp, float *yp, float *xv, float *yv);
 
 }
 #endif

@@ -2,5 +2,6 @@
 */testGPU
 */boids
 */*.o
+*.o
 */boids_acc
 *.boids_acc_gpu

@@ -137,7 +137,7 @@
 
 /* Destructively normalize a vector. */
 
-void norm(double *x, double *y)
+void boids::norm(float* x, float* y)
 {
 	double len;
 
@@ -158,10 +158,10 @@ void norm(double *x, double *y)
 //  LS note: the following function will work on all of the boids.
 //           This is needed so that the outer loop over all boids can
 //           be parallelized for all compilers, especially openacc.
-void compute_new_headings(
-	struct Params p, double *xp, double *yp,
-	double *xv, double *yv,
-	double *xnv, double *ynv)
+void boids::compute_new_headings(
+	struct boids::Params p, float *xp, float *yp,
+	float *xv, float *yv,
+	float *xnv, float *ynv)
 {
 
 	// for each boid, we will examine every other boid
@@ -171,10 +171,10 @@ void compute_new_headings(
 		// variables declared in this block become private when using pragmas
 		// int i, j, k,
 		int numcent = 0;
-		double xa, ya, xb, yb, xc, yc, xd, yd, xt, yt;
-		double mindist, mx = 0, my = 0, d;
-		double cosangle, cosvangle, costemp;
-		double xtemp, ytemp, maxr, u, v;
+		float xa, ya, xb, yb, xc, yc, xd, yd, xt, yt;
+		float mindist, mx = 0, my = 0, d;
+		float cosangle, cosvangle, costemp;
+		float xtemp, ytemp, maxr, u, v;
 
 		/* This is the maximum distance in which any rule is activated. */
 		maxr = MAX(p.rviso, MAX(p.rcopy, MAX(p.rcent, p.rvoid)));
@@ -375,10 +375,10 @@ void compute_new_headings(
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-void draw_boid(struct Params p, int which, int color, double *xp, double *yp,
-			   double *xv, double *yv)
+void boids::draw_boid(struct boids::Params p, int which, int color, float *xp, float *yp,
+			   float *xv, float *yv)
 {
-	double x1, x2, x3, y1, y2, y3, a, t;
+	float x1, x2, x3, y1, y2, y3, a, t;
 
 	/* Plot a line in the direction that it is heading. */
 	x3 = xv[which];
@@ -433,7 +433,11 @@ the manual pages for more details.\
 ";
 
 	// LS eliminate global variables by declaring here
-	double *xp, *yp, *xv, *yv, *xnv, *ynv;
+	float *xp, *yp, *xv, *yv, *xnv, *ynv;
+
+	struct boids::Params params = boids::defaultParams;
+
+	OPTION* options = boids::setOptions(params);
 
 	// LS debug
 	fprintf(stderr, "Before options, Number of boids: %d\n", params.num);
@@ -461,12 +465,12 @@ the manual pages for more details.\
 	params.vangle = params.vangle * M_PI / 180.0;
 
 	/* Make space for the positions, velocities, and new velocities. */
-	xp = xmalloc(sizeof(double) * params.num);
-	yp = xmalloc(sizeof(double) * params.num);
-	xv = xmalloc(sizeof(double) * params.num);
-	yv = xmalloc(sizeof(double) * params.num);
-	xnv = xmalloc(sizeof(double) * params.num);
-	ynv = xmalloc(sizeof(double) * params.num);
+	xp  = (float*) xmalloc(sizeof(float) * params.num);
+	yp  = (float*) xmalloc(sizeof(float) * params.num);
+	xv  = (float*) xmalloc(sizeof(float) * params.num);
+	yv  = (float*) xmalloc(sizeof(float) * params.num);
+	xnv = (float*) xmalloc(sizeof(float) * params.num);
+	ynv = (float*) xmalloc(sizeof(float) * params.num);
 
 	/* Set to random initial conditions. */
 	// LS note: keep sequential or change to parallel random number generation
@@ -476,7 +480,7 @@ the manual pages for more details.\
 		yp[i] = random() % params.height;
 		xv[i] = random_range(-1.0, 1.0);
 		yv[i] = random_range(-1.0, 1.0);
-		norm(&xv[i], &yv[i]);
+		boids::norm(&xv[i], &yv[i]);
 	}
 	// LS added timing
 	double start, end;
@@ -486,7 +490,7 @@ the manual pages for more details.\
 	for (i = 0; i < params.steps; i++)
 	{
 
-		compute_new_headings(params, xp, yp, xv, yv, xnv, ynv);
+		boids::compute_new_headings(params, xp, yp, xv, yv, xnv, ynv);
 		// /* For each boid, compute its new heading. */
 
 		// for(j = 0; j < num; j++) {
@@ -499,7 +503,7 @@ the manual pages for more details.\
 
 			/* Undraw the boid. */
 			if (!params.psdump)
-				draw_boid(params, j, 0, xp, yp, xv, yv);
+				boids::draw_boid(params, j, 0, xp, yp, xv, yv);
 
 			/* Update the velocity and position. */
 			xv[j] = xnv[j];
@@ -519,7 +523,7 @@ the manual pages for more details.\
 
 			/* Redraw the boid. */
 			if (!params.psdump)
-				draw_boid(params, j, 1, xp, yp, xv, yv);
+				boids::draw_boid(params, j, 1, xp, yp, xv, yv);
 		}
 	}
 	// LS end timing before some of the plotting
@@ -538,7 +542,7 @@ the manual pages for more details.\
 		plot_init(params.width, params.height, 2, "ps");
 		for (i = 0; i < params.num; i++)
 		{
-			draw_boid(params, i, 0, xp, yp, xv, yv);
+			boids::draw_boid(params, i, 0, xp, yp, xv, yv);
 		}
 		plot_finish();
 	}
