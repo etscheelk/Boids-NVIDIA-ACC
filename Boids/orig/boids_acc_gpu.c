@@ -198,8 +198,8 @@ void compute_new_headings(
 
 	// for each boid, we will examine every other boid
 	// #pragma omp parallel for shared(xp, yp, xv, yv, xnv, ynv)
-	#pragma acc kernels
-	#pragma acc loop independent collapse(1)
+	#pragma acc kernels loop independent collapse(1)
+	// #pragma acc data copy(ynv[:p.num], xnv[:p.num]) copyin(p, xv[:p.num], yv[:p.num], xp[:p.num], yp[:p.num])
 	for (int which = 0; which < p.num; which++)
 	{
 		// variables declared in this block become private when using pragmas
@@ -230,6 +230,7 @@ void compute_new_headings(
 		///////////////////////////////////////////////////////////////////////
 		/* For every boid... */
 
+		#pragma acc loop collapse(1)
 		for (int i = 0; i < p.num; i++)
 		{
 
@@ -246,6 +247,7 @@ void compute_new_headings(
 			 */
 			mindist = 10e10;
 
+			#pragma acc loop collapse(2)
 			for (int j = -p.width; j <= p.width; j += p.width)
 				for (int k = -p.height; k <= p.height; k += p.height)
 				{
@@ -564,6 +566,7 @@ the manual pages for more details.\
 	{
 
 		compute_new_headings(params, xp, yp, xv, yv, xnv, ynv);
+		// printf("0 pos: (%lf, %lf)\n", xp[0], yp[0]);
 		// /* For each boid, compute its new heading. */
 
 		// for(j = 0; j < num; j++) {
