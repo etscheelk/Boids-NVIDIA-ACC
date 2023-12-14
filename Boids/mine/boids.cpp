@@ -420,7 +420,7 @@ int main(int argc, char **argv)
 
 	// LS use struct for default parameters
 
-	char help_string[] = "\
+	char* help_string = "\
 Simulate a flock of boids according to rules that determine their \
 individual behaviors as well as the ``physics'' of their universe. \
 A boid greedily attempts to apply four rules with respect to its \
@@ -439,10 +439,17 @@ the manual pages for more details.\
 
 	OPTION* options = boids::setOptions(params);
 
+
+	params.width = 800;
+	params.height = 800;
+	params.num = 1024;
+
 	// LS debug
 	fprintf(stderr, "Before options, Number of boids: %d\n", params.num);
 
 	get_options(argc, argv, options, help_string);
+
+	puts("Gets past get_options");
 
 	// LS debug
 	fprintf(stderr, "After options, Number of boids: %d\n", params.num);

@@ -99,7 +99,7 @@ static void display_options(char **argv, OPTION *options, char *help)
         format_string(buffer, maxlen + 6, 4, 4);
         break;
       case OPT_DOUBLE:
-        sprintf(temp, " (%g)", *(double *)options[i].ptr);
+        sprintf(temp, " (%g)", *(float *)options[i].ptr);
         strcat(buffer, temp);
         format_string(buffer, maxlen + 6, 4, 4);
         break;
@@ -140,6 +140,10 @@ void bad_option(char **argv, int badopt)
 void get_options(int argc, char **argv, OPTION *options, char *help)
 {
   int i, j, found;
+
+  for (int i = 0; i < argc; ++i) {
+    printf("%s\n", argv[i]);
+  }
 
   /* For each argument in the command line.
    */
@@ -185,7 +189,7 @@ void get_options(int argc, char **argv, OPTION *options, char *help)
               bad_option(argv, i);
               display_options(argv, options, help);
             }
-            *(double *)options[j].ptr = atof(argv[i + 1]);
+            *(float *)options[j].ptr = atof(argv[i + 1]);
             i += 2;
             break;
           case OPT_STRING:
@@ -333,22 +337,22 @@ void *xmalloc(size_t bytes)
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-double random_range(double low, double high)
+float random_range(float low, float high)
 {
-  double tmp;
+  float tmp;
 
-  tmp = fabs((double)(random()) / ((double) RAND_MAX + 1));
+  tmp = fabs((float)(random()) / ((float) RAND_MAX + 1));
   tmp = tmp * (high - low) + low;
   return(tmp);
 }
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-double random_gauss(void)
+float random_gauss(void)
 {
   static int holding = 0;  /* Are we holding an old value? */
-  static double hold;      /* The last value that we save. */
-  double factor, r, v1, v2;
+  static float hold;      /* The last value that we save. */
+  float factor, r, v1, v2;
 
   if(holding) {
     holding = 0;

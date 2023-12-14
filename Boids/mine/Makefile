@@ -18,7 +18,7 @@ XLIBS    = /usr/X11/lib
 COPTS    = -O3  -Wall  -D__dest_os=unix -fopenmp    # LS added openmp here
 CC       = gcc
 
-PGCC     = pgcc
+PGCC     = nvc++
 # initial accelerator options
 AOPTS= -fast -ta=tesla:cc75 -Minfo=accel
 
