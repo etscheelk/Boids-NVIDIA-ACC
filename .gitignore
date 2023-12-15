@@ -1,7 +1,8 @@
 */testMP
 */testGPU
 */boids
-*/*.o
+# */*.o
 *.o
-*/boids_acc
-*.boids_acc_gpu
+**/boids
+**/boids_acc
+**/boids_acc_gpu
