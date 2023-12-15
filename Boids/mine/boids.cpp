@@ -165,7 +165,12 @@ void boids::compute_new_headings(
 {
 
 	// for each boid, we will examine every other boid
-	#pragma omp parallel for shared(xp, yp, xv, yv, xnv, ynv)
+	// #pragma omp parallel for shared(xp, yp, xv, yv, xnv, ynv)
+	#ifdef GPU
+	#pragma acc kernels loop independent collapse(1)
+	#else
+	#pragma acc parallel loop independent collapse(1)
+	#endif
 	for (int which = 0; which < p.num; which++)
 	{
 		// variables declared in this block become private when using pragmas
@@ -196,6 +201,7 @@ void boids::compute_new_headings(
 		///////////////////////////////////////////////////////////////////////
 		/* For every boid... */
 
+		#pragma acc loop collapse(1)		
 		for (int i = 0; i < p.num; i++)
 		{
 
@@ -212,6 +218,7 @@ void boids::compute_new_headings(
 			 */
 			mindist = 10e10;
 
+			#pragma acc loop collapse(2)
 			for (int j = -p.width; j <= p.width; j += p.width)
 				for (int k = -p.height; k <= p.height; k += p.height)
 				{
@@ -375,184 +382,184 @@ void boids::compute_new_headings(
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-void boids::draw_boid(struct boids::Params p, int which, int color, float *xp, float *yp,
-			   float *xv, float *yv)
-{
-	float x1, x2, x3, y1, y2, y3, a, t;
+// void boids::draw_boid(struct boids::Params p, int which, int color, float *xp, float *yp,
+// 			   float *xv, float *yv)
+// {
+// 	float x1, x2, x3, y1, y2, y3, a, t;
 
-	/* Plot a line in the direction that it is heading. */
-	x3 = xv[which];
-	y3 = yv[which];
-	norm(&x3, &y3);
-	x1 = xp[which];
-	y1 = yp[which];
-	x2 = x1 - x3 * p.len;
-	y2 = y1 - y3 * p.len;
-	plot_line(x1, y1, x2, y2, color);
+// 	/* Plot a line in the direction that it is heading. */
+// 	x3 = xv[which];
+// 	y3 = yv[which];
+// 	norm(&x3, &y3);
+// 	x1 = xp[which];
+// 	y1 = yp[which];
+// 	x2 = x1 - x3 * p.len;
+// 	y2 = y1 - y3 * p.len;
+// 	plot_line(x1, y1, x2, y2, color);
 
-	/* Plot the head of the boid, with the angle of the arrow head
-	 * indicating its viewing angle.
-	 */
-	t = (x1 - x2) / p.len;
-	t = (t < -1) ? -1 : (t > 1) ? 1
-								: t;
-	a = acos(t);
-	a = (y1 - y2) < 0 ? -a : a;
+// 	/* Plot the head of the boid, with the angle of the arrow head
+// 	 * indicating its viewing angle.
+// 	 */
+// 	t = (x1 - x2) / p.len;
+// 	t = (t < -1) ? -1 : (t > 1) ? 1
+// 								: t;
+// 	a = acos(t);
+// 	a = (y1 - y2) < 0 ? -a : a;
 
-	/* This is for the right portion of the head. */
-	x3 = x1 + cos(a + p.angle / 2) * p.len / 3.0;
-	y3 = y1 + sin(a + p.angle / 2) * p.len / 3.0;
-	plot_line(x1, y1, x3, y3, color);
+// 	/* This is for the right portion of the head. */
+// 	x3 = x1 + cos(a + p.angle / 2) * p.len / 3.0;
+// 	y3 = y1 + sin(a + p.angle / 2) * p.len / 3.0;
+// 	plot_line(x1, y1, x3, y3, color);
 
-	/* This is for the left portion of the head. */
-	x3 = x1 + cos(a - p.angle / 2) * p.len / 3.0;
-	y3 = y1 + sin(a - p.angle / 2) * p.len / 3.0;
-	plot_line(x1, y1, x3, y3, color);
-}
+// 	/* This is for the left portion of the head. */
+// 	x3 = x1 + cos(a - p.angle / 2) * p.len / 3.0;
+// 	y3 = y1 + sin(a - p.angle / 2) * p.len / 3.0;
+// 	plot_line(x1, y1, x3, y3, color);
+// }
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-int main(int argc, char **argv)
-{
-	extern int plot_mag;
-	extern int plot_inverse;
-	int i, j;
+// int main(int argc, char **argv)
+// {
+// 	extern int plot_mag;
+// 	extern int plot_inverse;
+// 	int i, j;
 
-	// LS use struct for default parameters
+// 	// LS use struct for default parameters
 
-	char* help_string = "\
-Simulate a flock of boids according to rules that determine their \
-individual behaviors as well as the ``physics'' of their universe. \
-A boid greedily attempts to apply four rules with respect to its \
-neighbors: it wants to fly in the same direction, be in the center \
-of the local cluster of boids, avoid collisions with boids too close, \
-and maintain a clear view ahead by skirting around others that block \
-its view.  Changing these rules can make the boids behave like birds, \
-gnats, bees, fish, or magnetic particles.  See the RULES section of \
-the manual pages for more details.\
-";
+// 	char* help_string = "\
+// Simulate a flock of boids according to rules that determine their \
+// individual behaviors as well as the ``physics'' of their universe. \
+// A boid greedily attempts to apply four rules with respect to its \
+// neighbors: it wants to fly in the same direction, be in the center \
+// of the local cluster of boids, avoid collisions with boids too close, \
+// and maintain a clear view ahead by skirting around others that block \
+// its view.  Changing these rules can make the boids behave like birds, \
+// gnats, bees, fish, or magnetic particles.  See the RULES section of \
+// the manual pages for more details.\
+// ";
 
-	// LS eliminate global variables by declaring here
-	float *xp, *yp, *xv, *yv, *xnv, *ynv;
+// 	// LS eliminate global variables by declaring here
+// 	float *xp, *yp, *xv, *yv, *xnv, *ynv;
 
-	struct boids::Params params = boids::defaultParams;
+// 	struct boids::Params params = boids::defaultParams;
 
-	OPTION* options = boids::setOptions(params);
+// 	OPTION* options = boids::setOptions(params);
 
 
-	params.width = 800;
-	params.height = 800;
-	params.num = 1024;
+// 	params.width = 800;
+// 	params.height = 800;
+// 	params.num = 1024;
 
-	// LS debug
-	fprintf(stderr, "Before options, Number of boids: %d\n", params.num);
+// 	// LS debug
+// 	fprintf(stderr, "Before options, Number of boids: %d\n", params.num);
 
-	get_options(argc, argv, options, help_string);
+// 	get_options(argc, argv, options, help_string);
 
-	puts("Gets past get_options");
+// 	puts("Gets past get_options");
 
-	// LS debug
-	fprintf(stderr, "After options, Number of boids: %d\n", params.num);
+// 	// LS debug
+// 	fprintf(stderr, "After options, Number of boids: %d\n", params.num);
 
-	// LS added this for debugging and Threads set
-	fprintf(stderr, "Number of threads: %d\n", params.threads);
-	omp_set_num_threads(params.threads);
+// 	// LS added this for debugging and Threads set
+// 	fprintf(stderr, "Number of threads: %d\n", params.threads);
+// 	omp_set_num_threads(params.threads);
 
-	if (!params.psdump)
-	{
-		plot_mag = params.mag;
-		plot_inverse = params.invert;
-		plot_init(params.width, params.height, 2, params.term);
-		plot_set_all(0);
-	}
-	srandom(params.seed);
+// 	if (!params.psdump)
+// 	{
+// 		plot_mag = params.mag;
+// 		plot_inverse = params.invert;
+// 		plot_init(params.width, params.height, 2, params.term);
+// 		plot_set_all(0);
+// 	}
+// 	srandom(params.seed);
 
-	/* Convert angles to radians. */
-	params.angle = params.angle * M_PI / 180.0;
-	params.vangle = params.vangle * M_PI / 180.0;
+// 	/* Convert angles to radians. */
+// 	params.angle = params.angle * M_PI / 180.0;
+// 	params.vangle = params.vangle * M_PI / 180.0;
 
-	/* Make space for the positions, velocities, and new velocities. */
-	xp  = (float*) xmalloc(sizeof(float) * params.num);
-	yp  = (float*) xmalloc(sizeof(float) * params.num);
-	xv  = (float*) xmalloc(sizeof(float) * params.num);
-	yv  = (float*) xmalloc(sizeof(float) * params.num);
-	xnv = (float*) xmalloc(sizeof(float) * params.num);
-	ynv = (float*) xmalloc(sizeof(float) * params.num);
+// 	/* Make space for the positions, velocities, and new velocities. */
+// 	xp  = (float*) xmalloc(sizeof(float) * params.num);
+// 	yp  = (float*) xmalloc(sizeof(float) * params.num);
+// 	xv  = (float*) xmalloc(sizeof(float) * params.num);
+// 	yv  = (float*) xmalloc(sizeof(float) * params.num);
+// 	xnv = (float*) xmalloc(sizeof(float) * params.num);
+// 	ynv = (float*) xmalloc(sizeof(float) * params.num);
 
-	/* Set to random initial conditions. */
-	// LS note: keep sequential or change to parallel random number generation
-	for (i = 0; i < params.num; i++)
-	{
-		xp[i] = random() % params.width;
-		yp[i] = random() % params.height;
-		xv[i] = random_range(-1.0, 1.0);
-		yv[i] = random_range(-1.0, 1.0);
-		boids::norm(&xv[i], &yv[i]);
-	}
-	// LS added timing
-	double start, end;
-	start = omp_get_wtime();
+// 	/* Set to random initial conditions. */
+// 	// LS note: keep sequential or change to parallel random number generation
+// 	for (i = 0; i < params.num; i++)
+// 	{
+// 		xp[i] = random() % params.width;
+// 		yp[i] = random() % params.height;
+// 		xv[i] = random_range(-1.0, 1.0);
+// 		yv[i] = random_range(-1.0, 1.0);
+// 		boids::norm(&xv[i], &yv[i]);
+// 	}
+// 	// LS added timing
+// 	double start, end;
+// 	start = omp_get_wtime();
 
-	/* For each time step... */
-	for (i = 0; i < params.steps; i++)
-	{
+// 	/* For each time step... */
+// 	for (i = 0; i < params.steps; i++)
+// 	{
 
-		boids::compute_new_headings(params, xp, yp, xv, yv, xnv, ynv);
-		// /* For each boid, compute its new heading. */
+// 		boids::compute_new_headings(params, xp, yp, xv, yv, xnv, ynv);
+// 		// /* For each boid, compute its new heading. */
 
-		// for(j = 0; j < num; j++) {
-		//   compute_new_heading(j, xp, yp, xv, yv, xnv, ynv);
-		// }
+// 		// for(j = 0; j < num; j++) {
+// 		//   compute_new_heading(j, xp, yp, xv, yv, xnv, ynv);
+// 		// }
 
-		/* For each boid again... */
-		for (j = 0; j < params.num; j++)
-		{
+// 		/* For each boid again... */
+// 		for (j = 0; j < params.num; j++)
+// 		{
 
-			/* Undraw the boid. */
-			if (!params.psdump)
-				boids::draw_boid(params, j, 0, xp, yp, xv, yv);
+// 			/* Undraw the boid. */
+// 			if (!params.psdump)
+// 				boids::draw_boid(params, j, 0, xp, yp, xv, yv);
 
-			/* Update the velocity and position. */
-			xv[j] = xnv[j];
-			yv[j] = ynv[j];
-			xp[j] += xv[j] * params.dt;
-			yp[j] += yv[j] * params.dt;
+// 			/* Update the velocity and position. */
+// 			xv[j] = xnv[j];
+// 			yv[j] = ynv[j];
+// 			xp[j] += xv[j] * params.dt;
+// 			yp[j] += yv[j] * params.dt;
 
-			/* Wrap around the screen coordinates. */
-			if (xp[j] < 0)
-				xp[j] += params.width;
-			else if (xp[j] >= params.width)
-				xp[j] -= params.width;
-			if (yp[j] < 0)
-				yp[j] += params.height;
-			else if (yp[j] >= params.height - 1)
-				yp[j] -= params.height;
+// 			/* Wrap around the screen coordinates. */
+// 			if (xp[j] < 0)
+// 				xp[j] += params.width;
+// 			else if (xp[j] >= params.width)
+// 				xp[j] -= params.width;
+// 			if (yp[j] < 0)
+// 				yp[j] += params.height;
+// 			else if (yp[j] >= params.height - 1)
+// 				yp[j] -= params.height;
 
-			/* Redraw the boid. */
-			if (!params.psdump)
-				boids::draw_boid(params, j, 1, xp, yp, xv, yv);
-		}
-	}
-	// LS end timing before some of the plotting
-	end = omp_get_wtime();
-	fprintf(stderr, "Total time: %f seconds\n", end - start);
+// 			/* Redraw the boid. */
+// 			if (!params.psdump)
+// 				boids::draw_boid(params, j, 1, xp, yp, xv, yv);
+// 		}
+// 	}
+// 	// LS end timing before some of the plotting
+// 	end = omp_get_wtime();
+// 	fprintf(stderr, "Total time: %f seconds\n", end - start);
 
-	printf("%f, %f\n", xp[0], yp[0]);
+// 	printf("%f, %f\n", xp[0], yp[0]);
 
-	if (!params.psdump)
-		plot_finish();
+// 	if (!params.psdump)
+// 		plot_finish();
 
-	/* If we want a PS dump of the final configuration, do it. */
-	if (params.psdump)
-	{
-		plot_inverse = 0;
-		plot_init(params.width, params.height, 2, "ps");
-		for (i = 0; i < params.num; i++)
-		{
-			boids::draw_boid(params, i, 0, xp, yp, xv, yv);
-		}
-		plot_finish();
-	}
+// 	/* If we want a PS dump of the final configuration, do it. */
+// 	if (params.psdump)
+// 	{
+// 		plot_inverse = 0;
+// 		plot_init(params.width, params.height, 2, "ps");
+// 		for (i = 0; i < params.num; i++)
+// 		{
+// 			boids::draw_boid(params, i, 0, xp, yp, xv, yv);
+// 		}
+// 		plot_finish();
+// 	}
 
-	exit(0);
-}
+// 	exit(0);
+

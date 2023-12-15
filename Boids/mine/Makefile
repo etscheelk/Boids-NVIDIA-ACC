@@ -86,6 +86,30 @@ $(ACC_VERSION): boids_acc.c libmisc.a
 $(ACC_VERSION_GPU): boids_acc_gpu.c libmisc.a
 	nvc -acc=gpu -gpu=managed -Minfo=accel -fast -o $(ACC_VERSION_GPU) boids_acc_gpu.c $(LDFLAGS) $(LIBS) $(OMP)
 
+
+
+
+misc: misc.c
+	nvc -c -fast misc.c -o misc.o
+
+boidsMP: boids.cpp misc
+	nvc++ -c -fast -fopenmp -mp -acc=multicore -Minfo=opt boids.cpp misc.o -o boidsMP.o
+
+boidsGPU: boids.cpp misc
+	nvc++ -c -fast -acc=gpu -gpu=managed -Minfo=accel boids.cpp misc.o -o boidsGPU.o -DGPU
+
+
+tsglBoidsMP: tsglBoids.cpp boidsMP misc
+	nvc++ -fast tsglBoids.cpp boidsMP.o misc.o -I$(TSGL_HOME)/include/TSGL -I$(TSGL_HOME)/include/freetype2 -ltsgl -lfreetype -lGLEW -lglfw -lGL -lGLU -o tsglBoidsMP -fopenmp -mp -acc=multicore -Minfo=opt
+
+tsglBoidsGPU: tsglBoids.cpp boidsGPU misc
+	nvc++ -fast tsglBoids.cpp boidsGPU.o misc.o -I$(TSGL_HOME)/include/TSGL -I$(TSGL_HOME)/include/freetype2 -ltsgl -lfreetype -lGLEW -lglfw -lGL -lGLU -o tsglBoidsGPU -acc=gpu -gpu=managed -Minfo=accel
+
+
+test: boids.cpp
+	nvc++ -fast tsglBoids.cpp boids.o misc.o -I$(TSGL_HOME)/include/TSGL -I$(TSGL_HOME)/include/freetype2 -ltsgl -lfreetype -lGLEW -lglfw -lGL -lGLU 
+
+
 libmisc.a: misc.o plot.o $(PLOTOBJS)
 	ar cr $@ $^
 	ranlib $@
