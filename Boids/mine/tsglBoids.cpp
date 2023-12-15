@@ -1,6 +1,12 @@
 #include <tsgl.h>
 #include "boids.hpp"
 #include "misc.h"
+#include <omp.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <vector>
+#include <memory>
 
 using namespace tsgl;
 
@@ -80,6 +86,8 @@ float* yv;
 float* xnv;
 float* ynv;
 
+ColorFloat arr[] = {WHITE, BLUE, CYAN, YELLOW, GREEN, ORANGE, LIME, PURPLE};
+
 void initiateBoidArrays(
     struct boids::Params p, 
     float* xp, float* yp,
@@ -109,6 +117,82 @@ void initiateBoidDraw(
     }
 }
 
+void boidIteration (
+    boids::Params p,
+    float* xp, float* yp,
+    float* xv, float* yv,
+    float* xnv, float* ynv
+) 
+{
+    boids::compute_new_headings(p, xp, yp, xv, yv, xnv, ynv);
+
+    for (int i = 0; i < p.num; ++i) 
+    {
+        xv[i] = xnv[i];
+        yv[i] = ynv[i];
+        xp[i] += xv[i] * p.dt;
+        yp[i] += yv[i] * p.dt;
+        
+        
+        // Wrap around screen coordinates
+        if (xp[i] < -p.width / 2) {
+            xp[i] += p.width;
+        }
+        else if (xp[i] >= p.width / 2) {
+            xp[i] -= p.width;
+        }
+
+        if (yp[i] < -p.height / 2) {
+            yp[i] += p.height;
+        }
+        else if (yp[i] >= p.height / 2) {
+            yp[i] -= p.height;
+        }
+    }
+}
+
+void boidDrawIteration (
+    boids::Params p,
+    float* xp, float* yp,
+    float* xv, float* yv,
+    float* xnv, float* ynv,
+    std::vector<std::unique_ptr<boid>>& boidDraw
+)
+{
+    boids::compute_new_headings(p, xp, yp, xv, yv, xnv, ynv);
+
+    #ifndef GPU
+    #pragma acc parallel loop independent collapse(1) num_gangs(p.threads)
+    #endif
+    for (int i = 0; i < p.num; ++i) {
+        xv[i] = xnv[i];
+        yv[i] = ynv[i];
+        xp[i] += xv[i] * p.dt;
+        yp[i] += yv[i] * p.dt;
+        
+        
+        // Wrap around screen coordinates
+        if (xp[i] < -p.width / 2) {
+            xp[i] += p.width;
+        }
+        else if (xp[i] >= p.width / 2) {
+            xp[i] -= p.width;
+        }
+
+        if (yp[i] < -p.height / 2) {
+            yp[i] += p.height;
+        }
+        else if (yp[i] >= p.height / 2) {
+            yp[i] -= p.height;
+        }
+
+        boidDraw[i]->updatePosition(xp[i], yp[i]);
+        boidDraw[i]->updateDirection(xv[i], yv[i]);
+
+        boidDraw[i]->setColor(arr[omp_get_thread_num() % 8]);
+    }
+}
+
 void tsglScreen(Canvas& canvas) {
     initiateBoidArrays(p, xp, yp, xv, yv);
 
@@ -116,43 +200,18 @@ void tsglScreen(Canvas& canvas) {
     initiateBoidDraw(p, boidDraw, xp, yp, xv, yv, &canvas);
 
     while (canvas.isOpen()) {
-        canvas.sleep();
+        // canvas.sleep();
 
-        boids::compute_new_headings(p, xp, yp, xv, yv, xnv, ynv);
-
-
-        for (int i = 0; i < p.num; ++i) {
-            xv[i] = xnv[i];
-            yv[i] = ynv[i];
-            xp[i] += xv[i] * p.dt;
-            yp[i] += yv[i] * p.dt;
-            
-            
-            // Wrap around screen coordinates
-            if (xp[i] < -p.width / 2) {
-                xp[i] += p.width;
-            }
-            else if (xp[i] >= p.width / 2) {
-                xp[i] -= p.width;
-            }
-
-            if (yp[i] < -p.height / 2) {
-                yp[i] += p.height;
-            }
-            else if (yp[i] >= p.height / 2) {
-                yp[i] -= p.height;
-            }
-
-            boidDraw[i]->updatePosition(xp[i], yp[i]);
-            boidDraw[i]->updateDirection(xv[i], yv[i]);
-        }
-
+        boidDrawIteration(p, xp, yp, xv, yv, xnv, ynv, boidDraw);
     }
 }
 
 int main(int argc, char* argv[]) {
     
     p = defaultParams;
+
+
+    p.num = 512;
 
     xp  = new float[p.num];
     yp  = new float[p.num];
@@ -162,11 +221,29 @@ int main(int argc, char* argv[]) {
     ynv = new float[p.num];
 
 
+    
+    // OPTION* o = boids::setOptions(p);
+    // get_options(argc, argv, o, "test");
 
+    if (argc > 1) {
+        p.threads = atoi(argv[1]);
+    }
     
 
     Canvas can(-1, -1, p.width, p.height, "Test Screen", BLACK);
     can.run(tsglScreen);
+
+    // initiateBoidArrays(p, xp, yp, xv, yv);
+    // double t1 = omp_get_wtime();
+    // for (int i = 0; i < 1000; ++i) {
+    //     boidIteration(p, xp, yp, xv, yv, xnv, ynv);
+    //     if (i % 50 == 0) {
+    //         printf("it %d done\n", i);
+    //     }
+    // }
+    // double t2 = omp_get_wtime();
+
+    // printf("Time taken: %lf\n", t2 - t1);
 
 
     delete [] xp;
