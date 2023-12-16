@@ -27,9 +27,9 @@ public:
     boid(float x, float y, int index, Canvas* canvasP) : can(canvasP) {
         this->index = index;
         arrow = new Arrow(
-            x, y, 0, 
-            20, 20, 
-            0, 0, 0, 
+            x, y, 0,
+            20, 20,
+            0, 0, 0,
             CYAN
         );
         can->add(arrow);
@@ -159,12 +159,16 @@ void boidDrawIteration (
     std::vector<std::unique_ptr<boid>>& boidDraw
 )
 {
+    // printf("---Compute Headings---\n");
     boids::compute_new_headings(p, xp, yp, xv, yv, xnv, ynv);
+    // printf("---DONE DONE DONE---\n\n");
 
-    #ifndef GPU
-    #pragma acc parallel loop independent collapse(1) num_gangs(p.threads)
-    #endif
+    // #ifndef GPU
+    // #pragma acc parallel loop independent collapse(1) num_gangs(p.threads)
+    // #endif
+    // #pragma acc loop seq
     for (int i = 0; i < p.num; ++i) {
+        // printf("\tindex %d\n", i);
         xv[i] = xnv[i];
         yv[i] = ynv[i];
         xp[i] += xv[i] * p.dt;
@@ -186,6 +190,7 @@ void boidDrawIteration (
             yp[i] -= p.height;
         }
 
+
         boidDraw[i]->updatePosition(xp[i], yp[i]);
         boidDraw[i]->updateDirection(xv[i], yv[i]);
 
@@ -199,8 +204,11 @@ void tsglScreen(Canvas& canvas) {
     std::vector<std::unique_ptr<boid>> boidDraw(p.num);
     initiateBoidDraw(p, boidDraw, xp, yp, xv, yv, &canvas);
 
+    int it = 0;
     while (canvas.isOpen()) {
         // canvas.sleep();
+        printf("it %d\n", it++);
+
 
         boidDrawIteration(p, xp, yp, xv, yv, xnv, ynv, boidDraw);
     }
@@ -211,7 +219,7 @@ int main(int argc, char* argv[]) {
     p = defaultParams;
 
 
-    p.num = 512;
+    p.num = 8192;
 
     xp  = new float[p.num];
     yp  = new float[p.num];
@@ -219,6 +227,13 @@ int main(int argc, char* argv[]) {
     yv  = new float[p.num];
     xnv = new float[p.num];
     ynv = new float[p.num];
+
+    // xp  = (float*) malloc(sizeof(float) * p.num);
+    // yp  = (float*) malloc(sizeof(float) * p.num);
+    // xv  = (float*) malloc(sizeof(float) * p.num);
+    // yv  = (float*) malloc(sizeof(float) * p.num);
+    // xnv = (float*) malloc(sizeof(float) * p.num);
+    // ynv = (float*) malloc(sizeof(float) * p.num);
 
 
     
@@ -230,21 +245,28 @@ int main(int argc, char* argv[]) {
     }
     
 
-    Canvas can(-1, -1, p.width, p.height, "Test Screen", BLACK);
-    can.run(tsglScreen);
+    // Canvas can(-1, -1, p.width, p.height, "Test Screen", BLACK);
+    // can.run(tsglScreen);
 
-    // initiateBoidArrays(p, xp, yp, xv, yv);
-    // double t1 = omp_get_wtime();
-    // for (int i = 0; i < 1000; ++i) {
-    //     boidIteration(p, xp, yp, xv, yv, xnv, ynv);
-    //     if (i % 50 == 0) {
-    //         printf("it %d done\n", i);
-    //     }
-    // }
-    // double t2 = omp_get_wtime();
+    initiateBoidArrays(p, xp, yp, xv, yv);
+    double t1 = omp_get_wtime();
+    for (int i = 0; i < 1000; ++i) {
+        boidIteration(p, xp, yp, xv, yv, xnv, ynv);
+        if (i % 50 == 0) {
+            printf("it %d done\n", i);
+        }
+    }
+    double t2 = omp_get_wtime();
 
-    // printf("Time taken: %lf\n", t2 - t1);
+    printf("Time taken: %lf\n", t2 - t1);
 
+
+    // free(xp);
+    // free(yp);
+    // free(xv);
+    // free(yv);
+    // free(xnv);
+    // free(ynv);
 
     delete [] xp;
     delete [] yp;

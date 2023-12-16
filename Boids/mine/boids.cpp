@@ -223,6 +223,8 @@ void boids::compute_new_headings(
 	#endif
 	for (int which = 0; which < p.num; which++)
 	{
+		// printf("\twhich %d\n", which);
+
 		// variables declared in this block become private when using pragmas
 		// int i, j, k,
 		int numcent = 0;
