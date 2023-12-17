@@ -14,7 +14,7 @@ then
 fi
 
 bin="../tsglBoidsGPU"
-printf "Start of GPU tests %s " "$bin"; date; nvaccelinfo;
+printf "Start of GPU tests %s " "$bin"; date; # nvaccelinfo;
 printf "\n\n"
 
 boidsCounts=(128 256 512 1024 2048 4096 8192)
@@ -30,7 +30,8 @@ do
     do
         printf "%d\t" "$trialNum"
         c="$bin 1 $boidCount"
-        printf "$c\t"
+        # printf "$c\t"
+        $c
         ((trialNum++))
         printf "\n"
     done

@@ -12,10 +12,9 @@ using namespace tsgl;
 
 class boid {
 private:
-    Arrow* arrow;
-    Canvas* can;
+    std::unique_ptr<Arrow> _arrow;
+    Canvas& _can;
 public:
-    int index;
     /**
      * @brief Construct a new boid object, which is only ever stored on the CPU.
      * We use pointer arrays so we don't have to send my boid objects to the GPU.
@@ -24,15 +23,14 @@ public:
      * @param y 
      * @param can 
      */
-    boid(float x, float y, int index, Canvas* canvasP) : can(canvasP) {
-        this->index = index;
-        arrow = new Arrow(
+    boid(float x, float y, int index, Canvas& can) : _can(can) {
+        _arrow = std::make_unique<Arrow>(
             x, y, 0,
             20, 20,
             0, 0, 0,
             CYAN
         );
-        can->add(arrow);
+        _can.add(_arrow.get());
     }
 
     /**
@@ -40,16 +38,16 @@ public:
      * 
      */
     ~boid() {
-        can->remove(arrow);
-        delete arrow;
+        _can.remove(_arrow.get());
     }
 
     void setColor(tsgl::ColorFloat color) {
-        arrow->setColor(color);
+        color.A = 0.5;
+        _arrow->setColor(color);
     }
 
     void updatePosition(float x, float y) {
-        arrow->setCenter(x, y, 0);
+        _arrow->setCenter(x, y, 0);
     }
 
     void updateDirection(float velx, float vely) {
@@ -57,7 +55,7 @@ public:
         if (velx > 0) {
             yaw += 180;
         }
-        arrow->setYaw(yaw);
+        _arrow->setYaw(yaw);
     }
 };
 
@@ -108,7 +106,7 @@ void initiateBoidDraw(
     std::vector<std::unique_ptr<boid>>& boidDraw,
     float* xp, float* yp,
     float* xv, float* yv,
-    Canvas* canvasP
+    Canvas& canvasP
 )
 {
     for (int i = 0; i < p.num; ++i) {
@@ -202,7 +200,7 @@ void tsglScreen(Canvas& canvas) {
     initiateBoidArrays(p, xp, yp, xv, yv);
 
     std::vector<std::unique_ptr<boid>> boidDraw(p.num);
-    initiateBoidDraw(p, boidDraw, xp, yp, xv, yv, &canvas);
+    initiateBoidDraw(p, boidDraw, xp, yp, xv, yv, canvas);
 
     int it = 0;
     while (canvas.isOpen()) {
@@ -218,7 +216,17 @@ int main(int argc, char* argv[]) {
     
     p = defaultParams;
 
+
+    // OPTION* o = boids::setOptions(p);
+    // get_options(argc, argv, o, "test");
+
+
+
     p.num = 128;
+
+    p.width = 2000;
+    p.height = 1300;
+
     if (argc > 1) {
         p.threads = atoi(argv[1]);
     }
@@ -226,7 +234,6 @@ int main(int argc, char* argv[]) {
     if (argc > 2) {
         p.num = atoi(argv[2]);
     }
-
 
     xp  = new float[p.num];
     yp  = new float[p.num];
@@ -244,25 +251,26 @@ int main(int argc, char* argv[]) {
 
 
     
-    // OPTION* o = boids::setOptions(p);
-    // get_options(argc, argv, o, "test");
 
     
 
-    Canvas can(-1, -1, p.width, p.height, "Test Screen", BLACK);
-    can.run(tsglScreen);
+    // Canvas can(-1, -1, p.width, p.height, "Test Screen", BLACK);
+    // can.run(tsglScreen);
 
-    // initiateBoidArrays(p, xp, yp, xv, yv);
-    // double t1 = omp_get_wtime();
-    // for (int i = 0; i < 1000; ++i) {
-    //     boidIteration(p, xp, yp, xv, yv, xnv, ynv);
-    //     // if (i % 50 == 0) {
-    //     //     printf("it %d done\n", i);
-    //     // }
-    // }
-    // double t2 = omp_get_wtime();
+    initiateBoidArrays(p, xp, yp, xv, yv);
+    fprintf(stderr, "Boid size of %d starting\n", p.num);
+    double t1 = omp_get_wtime();
+    for (int i = 0; i < 1000; ++i) {
+        boidIteration(p, xp, yp, xv, yv, xnv, ynv);
+        if (i % 50 == 0) {
+            fprintf(stderr, "\tit %d done\n", i);
+        }
+    }
+    double t2 = omp_get_wtime();
 
-    // printf("%lf", t2 - t1);
+    
+    fprintf(stdout, "%lf", t2 - t1);
+    fprintf(stderr, "\n%lf\n\n", t2 - t1);
 
 
     // free(xp);

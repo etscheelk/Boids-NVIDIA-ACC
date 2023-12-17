@@ -19,9 +19,9 @@ then
 fi
 
 
-boidsCounts=(128 256 512 1024 2048 4096)
+boidsCounts=(128 256 512 1024 2048 4096 8192)
 
-threadsCounts=(1 2 4 6 8)
+threadsCounts=(1 2 3 4 6)
 
 performLine () {
     printf "%d\t" "$trialNum"
