@@ -157,16 +157,12 @@ void boidDrawIteration (
     std::vector<std::unique_ptr<boid>>& boidDraw
 )
 {
-    // printf("---Compute Headings---\n");
     boids::compute_new_headings(p, xp, yp, xv, yv, xnv, ynv);
-    // printf("---DONE DONE DONE---\n\n");
 
     #ifndef GPU
     #pragma acc parallel loop independent collapse(1) num_gangs(p.threads)
     #endif
-    // #pragma acc loop seq
     for (int i = 0; i < p.num; ++i) {
-        // printf("\tindex %d\n", i);
         xv[i] = xnv[i];
         yv[i] = ynv[i];
         xp[i] += xv[i] * p.dt;
@@ -202,7 +198,6 @@ void tsglScreen(Canvas& canvas) {
     std::vector<std::unique_ptr<boid>> boidDraw(p.num);
     initiateBoidDraw(p, boidDraw, xp, yp, xv, yv, canvas);
 
-    int it = 0;
     while (canvas.isOpen()) {
         // canvas.sleep();
         // printf("it %d\n", it++);
@@ -224,8 +219,8 @@ int main(int argc, char* argv[]) {
 
     p.num = 128;
 
-    p.width = 2000;
-    p.height = 1300;
+    p.width = 2048;
+    p.height = 2048;
 
     if (argc > 1) {
         p.threads = atoi(argv[1]);
@@ -241,17 +236,6 @@ int main(int argc, char* argv[]) {
     yv  = new float[p.num];
     xnv = new float[p.num];
     ynv = new float[p.num];
-
-    // xp  = (float*) malloc(sizeof(float) * p.num);
-    // yp  = (float*) malloc(sizeof(float) * p.num);
-    // xv  = (float*) malloc(sizeof(float) * p.num);
-    // yv  = (float*) malloc(sizeof(float) * p.num);
-    // xnv = (float*) malloc(sizeof(float) * p.num);
-    // ynv = (float*) malloc(sizeof(float) * p.num);
-
-
-    
-
     
 
     // Canvas can(-1, -1, p.width, p.height, "Test Screen", BLACK);
@@ -272,13 +256,6 @@ int main(int argc, char* argv[]) {
     fprintf(stdout, "%lf", t2 - t1);
     fprintf(stderr, "\n%lf\n\n", t2 - t1);
 
-
-    // free(xp);
-    // free(yp);
-    // free(xv);
-    // free(yv);
-    // free(xnv);
-    // free(ynv);
 
     delete [] xp;
     delete [] yp;

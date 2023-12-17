@@ -14,8 +14,8 @@ then
 fi
 
 bin="../tsglBoidsGPU"
-printf "Start of GPU tests %s " "$bin"; date; # nvaccelinfo;
-printf "\n\n"
+printf "Start of GPU tests %s " "$bin"; date; nvaccelinfo;
+printf "\n2048x2048 board\n\n"
 
 boidsCounts=(128 256 512 1024 2048 4096 8192)
 
