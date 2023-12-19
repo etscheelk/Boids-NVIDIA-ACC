@@ -1,0 +1,25 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: Boids-NVIDIA-ACC
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Ethan
+    family-names: Scheelk
+    email: escheelk@macalester.edu
+    affiliation: Macalester College
+repository-code: >-
+  https://github.com/LollosaurusRex/Boids-NVIDIA-ACC/tree/master
+abstract: >-
+  Boids bird flocking visualization using Thread Safe
+  Graphics Library (TSGL) from Calvin College. This is an
+  API for OpenGL and is required for building.
+
+
+  Written for OpenACC with the intent to test multicore CPU
+  as well as GPU threading for higher boid counts.
+license: MIT
