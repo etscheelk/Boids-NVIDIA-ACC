@@ -42,7 +42,7 @@ public:
     }
 
     void setColor(tsgl::ColorFloat color) {
-        color.A = 0.5;
+        color.A = 0.9;
         _arrow->setColor(color);
     }
 
@@ -200,7 +200,6 @@ void tsglScreen(Canvas& canvas) {
 
     while (canvas.isOpen()) {
         // canvas.sleep();
-        // printf("it %d\n", it++);
 
 
         boidDrawIteration(p, xp, yp, xv, yv, xnv, ynv, boidDraw);
@@ -208,19 +207,15 @@ void tsglScreen(Canvas& canvas) {
 }
 
 int main(int argc, char* argv[]) {
-    
     p = defaultParams;
-
 
     // OPTION* o = boids::setOptions(p);
     // get_options(argc, argv, o, "test");
 
-
-
     p.num = 128;
 
-    p.width = 2048;
-    p.height = 2048;
+    p.width = 1920;
+    p.height = 1080;
 
     if (argc > 1) {
         p.threads = atoi(argv[1]);
@@ -238,23 +233,24 @@ int main(int argc, char* argv[]) {
     ynv = new float[p.num];
     
 
-    // Canvas can(-1, -1, p.width, p.height, "Test Screen", BLACK);
-    // can.run(tsglScreen);
+    Canvas can(-1, -1, p.width, p.height, "Test Screen", BLACK);
+    can.run(tsglScreen);
 
-    initiateBoidArrays(p, xp, yp, xv, yv);
-    fprintf(stderr, "Boid size of %d starting\n", p.num);
-    double t1 = omp_get_wtime();
-    for (int i = 0; i < 1000; ++i) {
-        boidIteration(p, xp, yp, xv, yv, xnv, ynv);
-        if (i % 50 == 0) {
-            fprintf(stderr, "\tit %d done\n", i);
-        }
-    }
-    double t2 = omp_get_wtime();
+    // Testing
+    // initiateBoidArrays(p, xp, yp, xv, yv);
+    // fprintf(stderr, "Boid size of %d starting\n", p.num);
+    // double t1 = omp_get_wtime();
+    // for (int i = 0; i < 1000; ++i) {
+    //     boidIteration(p, xp, yp, xv, yv, xnv, ynv);
+    //     if (i % 50 == 0) {
+    //         fprintf(stderr, "\tit %d done\n", i);
+    //     }
+    // }
+    // double t2 = omp_get_wtime();
+    // fprintf(stdout, "%lf", t2 - t1);
+    // fprintf(stderr, "\n%lf\n\n", t2 - t1);
 
     
-    fprintf(stdout, "%lf", t2 - t1);
-    fprintf(stderr, "\n%lf\n\n", t2 - t1);
 
 
     delete [] xp;

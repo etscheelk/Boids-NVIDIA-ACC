@@ -1,0 +1,194 @@
+Start of GPU tests ../fboidsGPU Mon Dec 18 19:09:52 CST 2023
+
+CUDA Driver Version:           12030
+
+Device Number:                 0
+Device Name:                   NVIDIA GeForce RTX 3060 Ti
+Device Revision Number:        8.6
+Global Memory Size:            8589279232
+Number of Multiprocessors:     38
+Concurrent Copy and Execution: Yes
+Total Constant Memory:         65536
+Total Shared Memory per Block: 49152
+Registers per Block:           65536
+Warp Size:                     32
+Maximum Threads per Block:     1024
+Maximum Block Dimensions:      1024, 1024, 64
+Maximum Grid Dimensions:       2147483647 x 65535 x 65535
+Maximum Memory Pitch:          2147483647B
+Texture Alignment:             512B
+Clock Rate:                    1740 MHz
+Execution Timeout:             Yes
+Integrated Device:             No
+Can Map Host Memory:           Yes
+Compute Mode:                  default
+Concurrent Kernels:            Yes
+ECC Enabled:                   No
+Memory Clock Rate:             7001 MHz
+Memory Bus Width:              256 bits
+L2 Cache Size:                 3145728 bytes
+Max Threads Per SMP:           1536
+Async Engines:                 5
+Unified Addressing:            Yes
+Managed Memory:                Yes
+Concurrent Managed Memory:     No
+Preemption Supported:          Yes
+Cooperative Launch:            Yes
+Default Target:                cc86
+
+2048x2048 board
+
+numBoids
+128
+trialNum	 time
+1	1.343381
+2	1.298118
+3	1.298117
+4	1.380227
+5	1.262783
+6	1.303560
+7	1.361398
+8	1.332512
+9
+10
+11
+12
+13
+14
+15
+16
+
+
+
+numBoids
+256
+trialNum	 time
+1	1.978305
+2	1.889673
+3	1.925081
+4	1.897542
+5	1.885664
+6	1.882675
+7	1.867728
+8	1.863825
+9
+10
+11
+12
+13
+14
+15
+16
+
+
+
+numBoids
+512
+trialNum	 time
+1	3.205659
+2	3.185624
+3	3.158571
+4	3.158123
+5	3.184943
+6	3.151223
+7	3.177644
+8	3.180221
+9
+10
+11
+12
+13
+14
+15
+16
+
+
+
+numBoids
+1024
+trialNum	 time
+1	5.719496
+2	6.216906
+3	5.981470
+4	5.956625
+5	5.861838
+6	5.695350
+7	5.650943
+8	5.671384
+9
+10
+11
+12
+13
+14
+15
+16
+
+
+
+numBoids
+2048
+trialNum	 time
+1	11.042111
+2	10.956772
+3	10.961171
+4	11.086361
+5	10.838715
+6	11.542837
+7	11.436172
+8	11.352204
+9
+10
+11
+12
+13
+14
+15
+16
+
+
+
+numBoids
+4096
+trialNum	 time
+1	21.807610
+2	22.440633
+3	22.266779
+4	21.909499
+5	21.955443
+6	21.811673
+7	21.509336
+8	21.398484
+9
+10
+11
+12
+13
+14
+15
+16
+
+
+
+numBoids
+8192
+trialNum	 time
+1	78.485059
+2	78.644203
+3	79.171221
+4	77.912761
+5	77.412939
+6	77.379038
+7	77.318331
+8	77.401788
+9
+10
+11
+12
+13
+14
+15
+16
+
+
+

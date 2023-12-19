@@ -90,9 +90,10 @@ int main(int argc, char* argv[]) {
     // get_options(argc, argv, o, "test");
 
     p.num = 128;
+    p.seed = time(NULL);
 
-    p.width = 2000;
-    p.height = 1300;
+    p.width = 2048;
+    p.height = 2048;
 
     if (argc > 1) {
         p.threads = atoi(argv[1]);
