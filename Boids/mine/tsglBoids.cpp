@@ -159,9 +159,11 @@ void boidDrawIteration (
 {
     boids::compute_new_headings(p, xp, yp, xv, yv, xnv, ynv);
 
-    #ifndef GPU
-    #pragma acc parallel loop independent collapse(1) num_gangs(p.threads)
-    #endif
+    // #ifndef GPU
+    // #pragma acc parallel loop independent collapse(1) num_gangs(p.threads)
+    // #endif
+    
+    // Pragma here to update boid positions and color for visualization
     for (int i = 0; i < p.num; ++i) {
         xv[i] = xnv[i];
         yv[i] = ynv[i];
@@ -214,8 +216,8 @@ int main(int argc, char* argv[]) {
 
     p.num = 128;
 
-    p.width = 1920;
-    p.height = 1080;
+    p.width = 1024;
+    p.height = 1024;
 
     if (argc > 1) {
         p.threads = atoi(argv[1]);
@@ -233,7 +235,7 @@ int main(int argc, char* argv[]) {
     ynv = new float[p.num];
     
 
-    Canvas can(-1, -1, p.width, p.height, "Test Screen", BLACK);
+    Canvas can(-1, -1, p.width, p.height, "Boids", BLACK);
     can.run(tsglScreen);
 
     // Testing

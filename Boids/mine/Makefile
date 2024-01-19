@@ -13,6 +13,7 @@ boidsGPU: boids.cpp misc
 tsglBoidsMP: tsglBoids.cpp boidsMP misc
 	nvc++ -fast tsglBoids.cpp boidsMP.o misc.o -I$(TSGL_HOME)/include/TSGL -I$(TSGL_HOME)/include/freetype2 -ltsgl -lfreetype -lGLEW -lglfw -lGL -lGLU -o tsglBoidsMP -fopenmp -mp -acc=multicore -Minfo=opt -gopt
 
+
 tsglBoidsGPU: tsglBoids.cpp boidsGPU misc
 	nvc++ -fast tsglBoids.cpp boidsGPU.o misc.o -I$(TSGL_HOME)/include/TSGL -I$(TSGL_HOME)/include/freetype2 -ltsgl -lfreetype -lGLEW -lglfw -lGL -lGLU -o tsglBoidsGPU -acc=gpu -gpu=cc86 -Minfo=accel -DGPU -gopt
 
