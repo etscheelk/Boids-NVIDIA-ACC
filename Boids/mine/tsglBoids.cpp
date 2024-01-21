@@ -19,6 +19,9 @@ public:
      * @brief Construct a new boid object, which is only ever stored on the CPU.
      * We use pointer arrays so we don't have to send my boid objects to the GPU.
      * 
+     * All actual boid calculations are used on the pointer arrays. Once those
+     * calculations are complete, update all "physical" boids (this class).
+     * 
      * @param x 
      * @param y 
      * @param can 
@@ -50,6 +53,14 @@ public:
         _arrow->setCenter(x, y, 0);
     }
 
+    /**
+     * @brief Update's the boid's rotation to be facing the correct way based on given velocity.
+     * 
+     * The TSGL canvas has 0,0 in the center where the top right corner has (positive, positive) coordinates (Quadrant I)
+     * 
+     * @param velx 
+     * @param vely 
+     */
     void updateDirection(float velx, float vely) {
         float yaw = atan(vely / velx) * 180. / PI;
         if (velx > 0) {
@@ -77,15 +88,27 @@ struct boids::Params defaultParams =
 		threads = 1, .term = NULL
     };
 
-float* xp;
+// Global Variables for boid positions and velocities
+// Required to be global within the driver class due to TSGL structure
+float* xp; // x, y positions
 float* yp;
-float* xv;
+float* xv; // x, y velocities
 float* yv;
-float* xnv;
+float* xnv; // new x, y velocities
 float* ynv;
 
+// An array of TSGL colors
 ColorFloat arr[] = {WHITE, BLUE, CYAN, YELLOW, GREEN, ORANGE, LIME, PURPLE};
 
+/**
+ * @brief Fill the pointer array positions and velocities
+ * 
+ * @param p 
+ * @param xp 
+ * @param yp 
+ * @param xv 
+ * @param yv 
+ */
 void initiateBoidArrays(
     struct boids::Params p, 
     float* xp, float* yp,
@@ -101,6 +124,17 @@ void initiateBoidArrays(
     }
 }
 
+/**
+ * @brief Once all the arrays have filled, fill the array of boid class objects for drawing
+ * 
+ * @param p 
+ * @param boidDraw 
+ * @param xp 
+ * @param yp 
+ * @param xv 
+ * @param yv 
+ * @param canvasP 
+ */
 void initiateBoidDraw(
     struct boids::Params p,
     std::vector<std::unique_ptr<boid>>& boidDraw,
@@ -115,6 +149,18 @@ void initiateBoidDraw(
     }
 }
 
+/**
+ * @brief Compute a single iteration of boid movement. No draw updates. 
+ * Intended for testing.
+ * 
+ * @param p 
+ * @param xp 
+ * @param yp 
+ * @param xv 
+ * @param yv 
+ * @param xnv 
+ * @param ynv 
+ */
 void boidIteration (
     boids::Params p,
     float* xp, float* yp,
@@ -149,6 +195,18 @@ void boidIteration (
     }
 }
 
+/**
+ * @brief Compute a single iteration of movement, with draw updates to the canvas.
+ * 
+ * @param p 
+ * @param xp 
+ * @param yp 
+ * @param xv 
+ * @param yv 
+ * @param xnv 
+ * @param ynv 
+ * @param boidDraw 
+ */
 void boidDrawIteration (
     boids::Params p,
     float* xp, float* yp,
@@ -159,11 +217,11 @@ void boidDrawIteration (
 {
     boids::compute_new_headings(p, xp, yp, xv, yv, xnv, ynv);
 
+    
+    // Pragma here to update boid positions and color for visualization
     // #ifndef GPU
     // #pragma acc parallel loop independent collapse(1) num_gangs(p.threads)
     // #endif
-    
-    // Pragma here to update boid positions and color for visualization
     for (int i = 0; i < p.num; ++i) {
         xv[i] = xnv[i];
         yv[i] = ynv[i];
@@ -194,6 +252,11 @@ void boidDrawIteration (
     }
 }
 
+/**
+ * @brief The function that the canvas runs when it is created (passed as function pointer)
+ * 
+ * @param canvas 
+ */
 void tsglScreen(Canvas& canvas) {
     initiateBoidArrays(p, xp, yp, xv, yv);
 
@@ -201,6 +264,8 @@ void tsglScreen(Canvas& canvas) {
     initiateBoidDraw(p, boidDraw, xp, yp, xv, yv, canvas);
 
     while (canvas.isOpen()) {
+        // Slows down the canvas. 
+        // Keep if testing low boid counts
         // canvas.sleep();
 
 
@@ -219,10 +284,12 @@ int main(int argc, char* argv[]) {
     p.width = 1024;
     p.height = 1024;
 
+    // First argument sets the number of boids
     if (argc > 1) {
         p.threads = atoi(argv[1]);
     }
 
+    // Second argument sets the number of boids
     if (argc > 2) {
         p.num = atoi(argv[2]);
     }
@@ -238,7 +305,8 @@ int main(int argc, char* argv[]) {
     Canvas can(-1, -1, p.width, p.height, "Boids", BLACK);
     can.run(tsglScreen);
 
-    // Testing
+
+    // Testing, run without canvas for true speed tests
     // initiateBoidArrays(p, xp, yp, xv, yv);
     // fprintf(stderr, "Boid size of %d starting\n", p.num);
     // double t1 = omp_get_wtime();
@@ -251,8 +319,6 @@ int main(int argc, char* argv[]) {
     // double t2 = omp_get_wtime();
     // fprintf(stdout, "%lf", t2 - t1);
     // fprintf(stderr, "\n%lf\n\n", t2 - t1);
-
-    
 
 
     delete [] xp;
