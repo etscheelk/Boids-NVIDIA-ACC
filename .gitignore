@@ -6,3 +6,7 @@
 **/boids
 **/boids_acc
 **/boids_acc_gpu
+**/tsglBoidsOMP
+**/tsglBoidsMC
+**/tsglBoidsGPU
+**/libmisc.a
